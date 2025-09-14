@@ -1,0 +1,74 @@
+\ProvidesPackage{mathspec-symb}
+\RequirePackage{mathspec}
+\newif\ifnominussub
+\newif\ifnoprime
+%\DeclareOptionX{oldst}[true]{\ifthenelse{\equal{#1}{true}}{\def\numstyle{OldStyle}}{\def\numstyle{Lining}}}%%sect/par title fonts
+\DeclareOptionX{nominusreplace}[true]{\ifthenelse{\equal{#1}{true}}{\nominussubtrue}{\nominussubfalse}}
+\DeclareOptionX{noprimereplace}[true]{\ifthenelse{\equal{#1}{true}}{\noprimetrue}{\noprimefalse}}
+\ProcessOptionsX
+\ernewcommand\eu@MathPunctuation@symfont{Latin:m:n} %command from mathspec.sty, checks if defined previously
+\ernewcommand\eu@MathPunctuation@symfontspecial{Greek:m:n}
+%\def\eu@MathPunctuation@symfont{Latin:m:n}
+%\def\eu@MathPunctuation@symfontspecial{Greek:m:n}
+    \DeclareMathSymbol{,}{\mathpunct}{\eu@MathPunctuation@symfont}{`,}
+    \DeclareMathSymbol{:}{\mathrel}{\eu@MathPunctuation@symfont}{`:}
+    \DeclareMathSymbol{.}{\mathord}{\eu@MathPunctuation@symfont}{`.}
+    \DeclareMathSymbol{<}{\mathrel}{\eu@MathPunctuation@symfont}{`<}
+    \DeclareMathSymbol{>}{\mathrel}{\eu@MathPunctuation@symfont}{`>}
+    \DeclareMathSymbol{=}{\mathrel}{\eu@MathPunctuation@symfont}{`=}
+    \DeclareMathSymbol{+}{\mathrel}{\eu@MathPunctuation@symfont}{`+}
+    \DeclareMathSymbol{/}{\mathord}{\eu@MathPunctuation@symfont}{`/}
+    \ifreplacesim\DeclareMathSymbol{\sim}{\mathord}{\eu@MathPunctuation@symfontspecial}{`~} %for Century URW
+    \else\DeclareMathSymbol{\sim}{\mathord}{\eu@MathPunctuation@symfont}{`~}
+    \fi
+%    \DeclareMathSymbol{'}{\mathord}{\eu@MathPunctuation@symfont}{`'}
+    \DeclareMathSymbol{*}{\mathord}{\eu@MathPunctuation@symfont}{`*}
+    \DeclareMathSymbol{&}{\mathord}{\eu@MathPunctuation@symfont}{`&}
+    \DeclareMathSymbol{#}{\mathord}{\eu@MathPunctuation@symfont}{`#}
+    \DeclareMathSymbol{(}{\mathord}{\eu@MathPunctuation@symfont}{`(}
+    \DeclareMathSymbol{)}{\mathord}{\eu@MathPunctuation@symfont}{`)}
+    \DeclareMathSymbol{[}{\mathord}{\eu@MathPunctuation@symfont}{`[}
+    \DeclareMathSymbol{]}{\mathord}{\eu@MathPunctuation@symfont}{`]}
+% needed to avoid clash with MnSymbol option of mathspec; conditional deprecated
+%\ifx\mid\@empty
+%    \DeclareMathSymbol{\mid}{\mathrel}{\eu@MathPunctuation@symfont}{`|}
+%\else
+    \DeclareMathSymbol{\@mid}{\mathrel}{\eu@MathPunctuation@symfont}{`|}
+    \let\mid=\@mid
+%\fi
+    \DeclareMathSymbol{\mathper}{\mathinner}%
+            {\eu@MathPunctuation@symfont}{"0025}%[\mathpercent]
+    \XeTeXDeclareMathSymbol{^^^^2260}{\mathrel}%
+            {\eu@MathPunctuation@symfont}{"2260}[\mathneq]
+    \XeTeXDeclareMathSymbol{^^^^2248}{\mathrel}%
+            {\eu@MathPunctuation@symfont}{"2248}[\approx]
+    \XeTeXDeclareMathSymbol{^^^^2026}{\mathinner}%
+            {\eu@MathPunctuation@symfont}{"2026}[\mathellipsis]
+%    \DeclareMathSymbol{\mathprime}{\mathinner}%
+%            {\eu@MathPunctuation@symfont}{"00B4}%[\mathpercent]
+    %\if@mathprimesymbol\XeTeXglyph 2032
+    \ifnum\XeTeXcharglyph"2032>0
+     \XeTeXDeclareMathSymbol{^^^^2032}{\mathinner}%
+            {\eu@MathPunctuation@symfont}{"0027}%[\mathprime]%try also changing to \eu@LatinLowercase@symfont
+    \fi
+%Another solution for primes
+\ifnoprime\relax
+\else
+\AtBeginDocument{%
+\def\prime{\>\!{\text{\large\itshape\textquotesingle}}}%
+\def\primevar{\raisebox{1pt}{\>\!{\text{\small\itshape*}}}}%
+}%
+\fi
+% to ensure proper spacing
+%    \let\primetmp=\prime
+%    \AtBeginDocument{\def\prime{$"\primetmp$}}
+    \let\ellipsistmp=\mathellipsis
+    \AtBeginDocument{\def\mathellipsis{\mathinner\ellipsistmp}}
+% avoiding problems with amsmath and the minus symbol
+\ifnominussub\relax
+\else
+\AtBeginDocument{%
+\XeTeXDeclareMathSymbol{-}{\mathbin}{\eu@MathPunctuation@symfont}{"2212}%
+}
+\fi
+\endinput

@@ -1,0 +1,82 @@
+\def\sectionseparator{---}
+% \def\sectionending{.}
+\ifdefined\sectionending\else
+  \newcommand{\sectionending}[1]{#1.}
+  \fi
+\def\subparseparator{~}
+\ifdefined\subparending\else
+  \newcommand{\subparending}[1]{#1.}
+  \fi
+% --------------------------------------
+\ifnewdisplay
+\usepackage[noindentafter,center]{titlesec}
+\ifdefined\sectfont\else\let\sectfont=\scshape\fi%
+%\titleformat{\section}[display]{\sectfont\filcenter}{\thesection}{0em}{}
+\titleformat{\section}[block]
+{\filcenter\normalfont\sectfont\selectfont}
+{\thesection.}{0.5em}{}
+% \titlespacing{\section}
+% {5pc}{*2}{*2}[5pc]
+\let\paragraph=\section
+\fi
+%--------------------------------------
+\ifnewevans
+\usepackage[explicit]{titlesec}
+\ifdefined\sectfont\else\let\sectfont=\bfseries\fi%
+\ifdefined\subsectfont\else\let\subsectfont=\relax\fi%\bfseries%
+\titleformat{\section}[block]{\sectfont\filcenter}{\thesection}{0em}{}
+\titleformat{\subsection}[runin]
+{\normalfont\subsectfont}
+{\thesubsection.}{.5em}{}[~]%.\normalfont{---}]
+\titlespacing{\subsection}
+{0pt}{1.5ex plus .1ex minus .2ex}{0pt}
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\arabic{subsection}}
+\usepackage{chngcntr}
+\counterwithout{subsection}{section}
+\let\paragraph=\subsection
+\fi
+%-------------------------------------------------------
+\ifnewevanshempel
+\usepackage{titlesec}
+\ifdefined\sectfont\else\let\sectfont=\bfseries\fi%
+\titleformat{\section}[block]{\sectfont\filcenter}{\thesection}{0em}{}
+\ifdefined\subsectfont\else\let\subsectfont=\bfseries\fi%
+\titleformat{\subsection}[runin]
+{\normalfont\subsectfont}
+{\thesubsection.}{.5em}{}[\sectionending\normalfont\sectionseparator]
+\titlespacing{\subsection}
+{0pt}{1.5ex plus .1ex minus .2ex}{0pt}
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\arabic{subsection}}
+\usepackage{chngcntr}
+\counterwithout{subsection}{section}
+\let\paragraph=\subsection
+\fi
+%---------------------------------------------------
+\ifnewhempel
+\usepackage{titlesec}
+\ifdefined\sectfont\else\let\sectfont=\bfseries\fi%
+\titleformat{\section}[runin]
+{\normalfont\sectfont}
+{\thesection.}{.5em}{}[\sectionending\normalfont\sectionseparator]
+\titlespacing{\section}
+{0pt}{1.5ex plus .1ex minus .2ex}{0pt}
+%\setcounter{secnumdepth}{1}
+%\renewcommand{\thesection}{\arabic{section}}
+\let\paragraph=\section
+\fi
+% ------------------------------------------------------------
+% emulating description....
+\ifdefined\subparagfont\else\let\subparagfont=\itshape\fi%
+\makeatletter
+\ifttl@explicit %option explicit is passed to titlesec...
+  \titleformat{\subparagraph}[runin]
+  {\normalfont\subparagfont}{\thesubparagraph}{.5em}{#1}[\subparending\normalfont\subparseparator\subparseparator]
+\else
+  \titleformat{\subparagraph}[runin]
+  {\normalfont\subparagfont}{\thesubparagraph}{.5em}{}[\subparending\normalfont\subparseparator\subparseparator]
+\fi  
+\makeatother
+\titlespacing{\subparagraph}
+{0pt}{1.5ex plus .1ex minus .2ex}{0pt}

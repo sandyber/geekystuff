@@ -1,0 +1,401 @@
+\ProvidesPackage{sectformat}
+%
+%Load after iftex.sty
+%
+\RequirePackage{iftex}
+\RequirePackage{amsmath}
+\RequirePackage{ifthen}
+\RequirePackage{xkeyval}% calc}
+\RequirePackage{soul}
+\RequirePackage{microtype}
+\RequirePackage{chngcntr}
+%
+\newif\iftitlefnt
+\newif\ifnohyperref
+\newif\ifsofont
+\newif\ifsoulpackage
+\newif\ifboldfont
+\newif\ifitalicsfont
+\newif\ifsmallcapsfont
+\newif\ifsansfont
+\newif\ifoldstylenums
+\newif\ifnoboldfont
+\newif\ifskipsectfont
+\newif\ifevans
+\newif\ifcentersection
+\newif\ifinlinesection
+\newif\ifhempel
+\newif\ifnosectstyle
+\newif\ifparasymbol
+\def\hempel@sectionspace{---}
+\newif\ifevanshempel
+\newcommand{\lsnum}{25}
+%
+\DeclareOptionX{tf}[true]{\ifXeTeX\ifthenelse{\equal{#1}{true}}{\titlefnttrue}{\titlefntfalse}\else\smallcapsfonttrue\fi}%%sect/par title fonts
+\DeclareOptionX{oldnums}{\oldstylenumstrue} %%control the numbers in sect/par titles
+\DeclareOptionX{b}{\boldfonttrue} %%sect/par title fonts
+\DeclareOptionX{it}[true]{\ifthenelse{\equal{#1}{true}}{\italicsfonttrue}{\italicsfontfalse}}%%sect/par title fonts
+\DeclareOptionX{sc}[true]{\ifthenelse{\equal{#1}{true}}{\smallcapsfonttrue}{\smallcapsfontfalse}}%%sect/par title font
+\DeclareOptionX{sf}{\sansfonttrue} %%sect/par title font sans-serif
+\DeclareOptionX{so}[soul]{\sofonttrue\ifthenelse{\equal{#1}{soul}}{\soulpackagetrue}{\soulpackagefalse}} %%sect/par title font spaced out
+\DeclareOptionX{sonum}[25]{\renewcommand{\lsnum}{#1}}%% font spaced out number for microtype
+\DeclareOptionX{nobold}{\noboldfonttrue} %%make section font bold by default if (1) a bold face is missing and (2) another font is defined as bold
+\DeclareOptionX{nosectfont}[true]{\ifthenelse{\equal{#1}{true}}{\skipsectfonttrue}{\skipsectfontfalse}}
+\DeclareOptionX{evans}{\evanstrue} %%like in Evans' articles
+\DeclareOptionX{hempel}{\hempeltrue} %%like in Hempel's Logic of Confirmation
+\DeclareOptionX{inline}{\inlinesectiontrue} %%like in math books
+\DeclareOptionX{nosect}{\nosectstyletrue} %%cancel section commands in the file
+\DeclareOptionX{para}{\parasymboltrue} %%add \S symbol to sect/par titles
+\DeclareOptionX{sectionspace}{\def\hempel@sectionspace{#1}}
+\DeclareOptionX{evanshempel}{\evanshempeltrue} %%like in Hempel's Logic of Confirmation
+%\ProcessOptions %can't use with xkeyval
+\ProcessOptionsX
+%
+\ifevans
+    %\centersectionfalse
+\else
+\ifinlinesection
+\else
+\ifevanshempel
+\else
+\centersectiontrue\fi  %%so the default is like amsart formatting
+\fi\fi
+%
+\ifXeTeX
+ \AtBeginDocument{\renewcommand\lsstyle{\addfontfeature{LetterSpace=\lsnum}}}
+\fi
+\ifXeTeX
+	\ifskipsectfont
+		\def\sectfontspec{\normalfont}
+	\else	
+        	\ifoldstylenums
+                	  \def\sectfontspec{\normalfont\addfontfeature{Numbers=OldStyle}}%\fontspec[Numbers={OldStyle,Proportional}]{\sectfont}}
+	         \else
+        	       \ifnoboldfont
+                	  \def\sectfontspec{\normalfont\bfseries}
+	               \else
+        	          \def\sectfontspec{\normalfont\addfontfeature{Numbers=Lining}}%\fontspec[Numbers={Lining,Proportional}]{\sectfont}}
+	               \fi
+	         \fi
+	\fi
+\else
+	\def\sectfontspec{\relax}
+\fi
+%
+\ifparasymbol
+          \def\titlesymbol{\S}
+\else
+          \def\titlesymbol{\relax}
+\fi
+%---------------- Section formatting centered ----------------
+\ifcentersection
+ \let\oldsection=\section% for References
+ \newdimen\linespacing
+ \linespacing=\baselineskip
+ \def\section{\@startsection{section}{1}%
+   {\z@}{-.7\linespacing\@plus\linespacing}{.5\linespacing}% rm the min to indent
+   {\sectfontspec%
+     \iftitlefnt\titlefont\fi%
+     \ifsmallcapsfont\scshape\fi%
+     \ifboldfont\bfseries\fi%
+     \ifsansfont\sffamily\fi%
+     \centering}}
+ \edef\@secnumpunct{%
+   \ifdim\@tempskipa>\z@
+     \@ifnotempty{#8}{.\@nx\enspace}%
+   \else
+     \@ifempty{#8}{.}{.\@nx\enspace}%
+   \fi
+ }%
+ \def\@secnumfont{\relax}%{\titlefont}%\itshape}%{\bfseries}%
+ \def\@seccntformat#1{%
+   \protect\textup{\protect\@secnumfont
+     \titlesymbol\csname the#1\endcsname
+     \protect\@secnumpunct
+   }%
+ }
+ %
+\ifXeTeX
+\preto\thesection{\addfontfeature{Numbers=Lining}}
+\preto\thesubsection{\addfontfeature{Numbers=Lining}}
+\fi
+ %\renewcommand{\thesection}{{\sectfontspec\arabic{section}}}
+%\renewcommand{\thesubsection}{{\sectfontspec\arabic{subsection}}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\parindent}%\z@}%
+                                    {1.5ex \@plus1ex \@minus.2ex}%
+                                    {-0.0em}%space after title
+                                    {\normalfont\normalsize\itshape%\bfseries
+                                    }}
+\newcommand\subsectionnoind{\@startsection{subsection}{2}{\z@}%
+                                    {1.5ex \@plus1ex \@minus.2ex}%
+                                    {-0.0em}%
+                                    {\normalfont\normalsize%\bfseries
+                                    }}
+%\def\subsection@cntformat{%
+%                        \sectfontspec%
+%                        \ifboldfont\bfseries\fi%
+%                        \titlesymbol\thesubsection.%add ~ and change -0.5em to -0em to reduce spacing
+%}
+%
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+                                     {1.5ex \@plus1ex \@minus.2ex}%
+                                     {-0.5em}%
+                                     {\normalfont\normalsize\itshape}}
+%%%mimicking Sidgwick's inline headings separated by ---
+\def\@subparagraphfnt{\normalfont\normalsize\itshape}
+\renewcommand\subparagraph{\@startsection{subparagraph}{5}{\parindent}%
+                                     {1.5ex \@plus1ex \@minus.2ex}%
+                                     {-0.0em}%
+                                     {\@subparagraphfnt}}
+\let\@parfix\subparagraph
+       \def\@temppar#1{\@parfix{#1.{\normalfont---}}}
+\let\subparagraph\@temppar
+% \renewcommand{\thesection}{\Roman{section}}
+% \renewcommand{\S}{section~}
+\fi
+%---------------- Section formatting inline ----------------
+\ifinlinesection
+ \let\oldsection=\section% for References
+ %\ifboldfont
+ %        \def\sectstyle{\bfseries}
+ %\fi
+ %\ifsmallcapsfont
+ %        \def\sectstyle{\scshape}
+ %\fi
+ %\ifitalicsfont
+ %        \def\sectstyle{\itshape}
+ %\fi
+\newdimen\sectparind
+\newdimen\sectendspace
+\newdimen\sectendskip
+\sectendskip=1.5ex
+\ifhempel
+      \sectparind=\parindent
+      \sectendspace=0.0em
+\else
+      \sectparind=0.0em
+      \sectendspace=-0.5em
+\fi
+\def\section{\@startsection{section}{2}{\sectparind}%\z@
+                                     {\sectendskip \@plus1ex \@minus.2ex}%
+                                     {\sectendspace}%
+   {\sectfontspec%
+     \ifsansfont%
+          \sffamily%
+     \fi%
+     \ifsmallcapsfont%
+          \scshape%
+     \fi%
+     \ifboldfont%
+          \bfseries%
+     \fi%
+     \ifitalicsfont%
+          \itshape%
+     \fi%
+     }}
+%
+\edef\@secnumpunct{%
+   \ifdim\@tempskipa>\z@
+     \@ifnotempty{#8}{.\@nx\enspace}%
+   \else
+     \@ifempty{#8}{.}{.\@nx\enspace}%
+   \fi
+}%
+\ifitalicsfont
+\def\@secnumfont{\itshape}%\sectfontspec}%\sectstyle}%{\relax}
+\else
+\def\@secnumfont{\relax}
+\fi
+\def\@seccntformat#1{%
+   \protect\textup{\protect\@secnumfont
+     \titlesymbol\csname the#1\endcsname
+     \protect\@secnumpunct
+   }%
+ }
+%if using inline later (as usual)
+\let\sectionfix\section
+\ifXeTeX\def\pointend{\addfontfeature{LetterSpace=0}.}\else\def\pointend{.}\fi %take care of small caps space
+\ifhempel
+       \def\pointsection#1{\sectionfix{#1\pointend{\normalfont\hempel@sectionspace}}}
+\else
+       \def\pointsection#1{\sectionfix{#1\pointend}}
+\fi
+\let\section\pointsection
+\fi
+%---------Formatting a la Evans --------------------------
+\ifevans
+\nohyperreftrue
+\renewcommand{\thesection}{\Roman{section}}
+%\renewcommand{\theparagraph}{\arabic{paragraph}}
+\counterwithout*{subsection}{section}%needs chngcntr
+\def\thesubsection{\arabic{subsection}}% still needs removal of oldstyle figures in the main body
+\let\oldsection=\section% for References
+\newdimen\evansparskip
+\evansparskip=3.25ex
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+                                   {-3.5ex \@plus -1ex \@minus -.2ex}%
+                                   {2.3ex \@plus.2ex}%
+                                   {\sectfontspec\ifboldfont\bfseries\fi}}%\large
+\ifevanshempel
+\newdimen\subsectparind
+\newdimen\subsectendspace
+\newdimen\subsectendskip
+\subsectendskip=1.5ex
+\ifhempel
+      \subsectparind=\parindent
+      \subsectendspace=0.0em
+\else
+      \subsectparind=0.0em
+      \subsectendspace=-0.5em
+\fi
+\renewcommand{\paragraph}{\@startsection{subsection}{2}{\z@}%{\subsectparind}%
+                                     {\subsectendskip \@plus1ex \@minus.2ex}%
+                                     {\subsectendspace}%
+{\sectfontspec\ifsansfont\sffamily\fi\ifsmallcapsfont\scshape\fi\ifboldfont\bfseries\fi\ifitalicsfont\itshape\fi}}
+\else                            
+\renewcommand\paragraph{\@startsection{subsection}{2}{\z@}%
+                                    {\evansparskip \@plus1ex \@minus.2ex}%
+                                    {-0.5em}%
+                                    {\sectfontspec\normalsize%\bfseries
+                                    }}
+\fi                                  
+\renewcommand\subparagraph{\@startsection{subparagraph}{5}{\z@}%\parindent}%
+                                      {1.5ex \@plus1ex \@minus .2ex}%
+                                       {-0.5em}%
+                                       {\normalfont\normalsize\itshape}}
+%********
+\ifevanshempel
+\edef\@subsecnumpunct{%
+   \ifdim\@tempskipa>\z@
+     \@ifnotempty{#8}{.\@nx\enspace}%
+   \else
+     \@ifempty{#8}{.}{.\@nx\enspace}%
+   \fi
+}%
+\ifitalicsfont
+\def\@subsecnumfont{\itshape}%\sectfontspec}%\sectstyle}%{\relax}
+\else
+\def\@subsecnumfont{\relax}
+\fi
+\def\@seccntformat#1{\@ifundefined{#1@cntformat}%
+ {\csname the#1\endcsname}%
+ {\csname #1@cntformat\endcsname}}
+\def\subsection@cntformat{%
+   \protect\textup{\protect\@subsecnumfont
+     \titlesymbol\thesubsection
+     \protect\@subsecnumpunct
+   }%
+ }
+\else%regular evans
+% \def\@seccntformat#1{\csname the#1\endcsname.~}
+ \def\@seccntformat#1{\@ifundefined{#1@cntformat}%
+ {\csname the#1\endcsname}%
+ {\csname #1@cntformat\endcsname}}
+ \def\subsection@cntformat{%
+                        \sectfontspec%
+                        \ifboldfont\bfseries\fi%
+                        \titlesymbol\thesubsection%.%add ~ and change -0.5em to -0em to reduce spacing
+}
+%
+\fi
+% ********
+\let\paragraphfix\paragraph
+\ifXeTeX\def\pointend{\addfontfeature{LetterSpace=0}.}\else\def\pointend{.}\fi %take care of small caps space
+\ifhempel
+       \def\pointparagraph#1{\paragraphfix{#1\pointend{\normalfont\hempel@sectionspace}}}
+\else
+       \def\pointparagraph#1{\paragraphfix{#1\pointend}}
+\fi
+\let\paragraph\pointparagraph
+%********
+\ifnosectstyle
+      \renewcommand{\section}[1]{\paragraph{}}
+\else
+      \let\newsection=\section
+      \renewcommand{\section}[1]{\newsection{\protect\centering}}
+\fi
+%
+\ifXeTeX\preto\thesubsection{\addfontfeature{Numbers=Lining}}\fi
+%\let\paragraph\section
+%\let\section\relax
+%\renewcommand{\S}{\text{section }}
+\fi
+%--------------------------------------------
+%\renewcommand\refname{\normalsize References\protect}
+%----------------- Spaced out section titles ---------------------
+\ifsofont
+%\nohyperreffalse
+\let\sectiontemp\section
+       \ifsoulpackage\def\sofontsection#1{\sectiontemp{\texorpdfstring{\so{#1}}{#1}}}
+       \else\def\sofontsection#1{\sectiontemp{\texorpdfstring{\lsstyle #1}{#1}}}
+       \fi
+\renewcommand{\section}[1]{\sofontsection{#1}}
+\fi
+%
+% ---------------- combine evans-section and hempel-paragraph ----------------
+% \ifevanshempel\else
+%  \let\oldsection=\section% for References
+% \newdimen\sectparind
+% \newdimen\sectendspace
+% \newdimen\sectendskip
+% \sectendskip=1.5ex
+% \ifhempel
+%       \sectparind=\parindent
+%       \sectendspace=0.0em
+% \else
+%       \sectparind=0.0em
+%       \sectendspace=-0.5em
+% \fi
+% \newdimen\evansparskip
+% \evansparskip=3.25ex
+% \newcommand{\supersection}{\@startsection{section}{1}{\z@}%
+%                                    {-3.5ex \@plus -1ex \@minus -.2ex}%
+%                                    {2.3ex \@plus.2ex}%
+%                                    {\sectfontspec\ifboldfont\bfseries\fi}}%\large
+% \def\section{\@startsection{section}{2}{\sectparind}%\z@
+%                                      {\sectendskip \@plus1ex \@minus.2ex}%
+%                                      {\sectendspace}%
+%    {\sectfontspec%
+%      \ifsansfont%
+%           \sffamily%
+%      \fi%
+%      \ifsmallcapsfont%
+%           \scshape%
+%      \fi%
+%      \ifboldfont%
+%           \bfseries%
+%      \fi%
+%      \ifitalicsfont%
+%           \itshape%
+%      \fi%
+%      }}
+% %
+% \edef\@secnumpunct{%
+%    \ifdim\@tempskipa>\z@
+%      \@ifnotempty{#8}{.\@nx\enspace}%
+%    \else
+%      \@ifempty{#8}{.}{.\@nx\enspace}%
+%    \fi
+% }%
+% \ifitalicsfont
+% \def\@secnumfont{\itshape}%\sectfontspec}%\sectstyle}%{\relax}
+% \else
+% \def\@secnumfont{\relax}
+% \fi
+% \def\@seccntformat#1{%
+%    \protect\textup{\protect\@secnumfont
+%      \titlesymbol\csname the#1\endcsname
+%      \protect\@secnumpunct
+%    }%
+%  }
+% %if using inline later (as usual)
+% \let\sectionfix\section
+% \ifXeTeX\def\pointend{\addfontfeature{LetterSpace=0}.}\else\def\pointend{.}\fi %take care of small caps space
+% \ifhempel
+%        \def\pointsection#1{\sectionfix{#1\pointend{\normalfont\hempel@sectionspace}}}
+% \else
+%        \def\pointsection#1{\sectionfix{#1\pointend}}
+% \fi
+% \let\section\pointsection
+% \fi
+%-----------------------------------------
