@@ -1,4 +1,4 @@
-(provide 'completionT)
+(provide 'completionT490)
 ;---------------------------------------------
 (use-package avy
   :ensure t
@@ -99,22 +99,25 @@
   ;; (amx-mode 1)
   )
 ;---------------------------------------------
-;; (use-package auto-complete
-;;   :disabled
-;;   :ensure t
-;;   :pin melpa
-;;   :init
-;;   (progn
-;;     (ac-config-default)
-;;     (setq ac-auto-start nil)
-;; ;    (global-set-key "\M-/" 'auto-complete)
-;;     (ac-set-trigger-key "<tab>")
-;; ;    (setq ac-auto-show-menu 3.8)
-;;     (global-auto-complete-mode nil)         ;nil
-;;     (add-to-list 'ac-modes 'text-mode)
-;;     (add-to-list 'ac-modes 'LaTeX-mode)
-;;     ;; (setq ac-modes '(text-mode LaTeX-mode emacs-lisp-mode))
-;;     ))
+(use-package auto-complete
+  :disabled
+  :ensure t
+  :pin melpa
+  :init
+  (progn
+    (ac-config-default)
+    (setq ac-auto-start nil)
+;    (global-set-key "\M-/" 'auto-complete)
+    (ac-set-trigger-key "<tab>")
+;    (setq ac-auto-show-menu 3.8)
+    (global-auto-complete-mode nil)         ;nil
+    (add-to-list 'ac-modes 'text-mode)
+    (add-to-list 'ac-modes 'LaTeX-mode)
+    ;; (setq ac-modes '(text-mode LaTeX-mode emacs-lisp-mode))
+    ))
+(add-hook 'auto-complete-mode-hook ;https://github.com/auto-complete/auto-complete/issues/533#issuecomment-2698199280
+          (lambda ()
+            (setq ac-sources (remove 'ac-source-abbrev ac-sources))))
 ;; ;---------------------------------------------
 ;; ;requires grep: on Windows, put the contents of the bin folder from grep-2.10-w32-bin.zip in /zzz/emacs into the /apps/bin folder and add the address to system PATH
 ;; (use-package ac-ispell
@@ -130,30 +133,54 @@
 ;; )
 ;---------------------------------------------
 (use-package company
-  :disabled
+  ;; :disabled
   :ensure t
   :pin melpa
+  :demand t
+  :hook
+  (after-init . global-company-mode)
+  ;; :commands ; defers loading until after this command: https://www.gnu.org/software/emacs/manual/html_mono/use-package.html
+  ;; (company-complete-common)
   :config
-  (add-hook 'prog-mode-hook 'company-mode)
-  (setq company-global-modes '(not text-mode))
+  ;; (add-hook 'prog-mode-hook 'company-mode)
+  ;; (add-hook 'text-mode-hook 'company-mode)
+;  (add-hook 'after-init-hook 'global-company-mode)
   (setq company-selection-wrap-around t
         company-show-numbers t
+        company-format-margin-function nil ;disable icons
         company-tooltip-align-annotations t
         company-idle-delay nil;disable auto-complete
         company-require-match nil       
         company-minimum-prefix-length 2)
+  ;; use numbers 0-9 to select company completion candidates :https://www.reddit.com/r/emacs/comments/5jvawj/select_the_company_completion_candidate_by/?rdt=48684
+  ;; (let ((map company-active-map))
+  ;; (mapc (lambda (x) (define-key map (format "%d" x)
+  ;;                `(lambda () (interactive) (company-complete-number ,x))))
+  ;;       (number-sequence 0 9)))
+(let ((map company-active-map))
+  (mapc (lambda (x)
+          (define-key map (format "%d" x)
+            `(lambda ()
+               (interactive)
+               ;; If x is 0, complete the 10th candidate; otherwise complete x
+               (company-complete-number ,(if (= x 0) 10 x)))))
+        (number-sequence 0 9)))
+;; (define-key company-active-map [escape] 'company-abort) ;https://github.com/company-mode/company-mode/discussions/1356#discussioncomment-4469605
+  ;; (define-key company-mode-map (kbd "<tab>") 'company-complete)
   :custom
   (company-idle-delay nil) ;; turn off auto-completion
   ;; :general
   ;; (:keymap 'company-mode-map
   ;;          "C-SPC" 'company-complete) ;; keybinding to trigger company completion  
-  :bind
-  (:map
-   company-active-map ("<tab>" . company-complete-selection))
+  ;; :bind
+  ;; (:map
+  ;;  company-active-map ("C-x 0" . company-complete)) ; also try this if necessary: https://emacs.stackexchange.com/a/64077/19901
 ;  (("C-SPC" . company-complete))
   ;; (:map; not working bcs of ergoemacs? moved to the bind-key in generalT490.el
   ;;  company-mode-map ("C-x c" . company-complete))
   )
+;; (with-eval-after-load 'company
+;;   (define-key company-mode-map (kbd "<tab>") 'company-complete))
 ;; (use-package ivy-posframe ;;https://hoeltgman.gitlab.io/dotemacs/;; https://ogbe.net/emacs/minimal
 ;;   :disabled;; unstable?
 ;;   :ensure t

@@ -1,4 +1,4 @@
-(provide 'latexT)
+(provide 'latexT490)
 ;;------------------------------------------------------------
 ;(define-key minibuffer-local-completion-map " " 'self-insert-command); make SPC normal in completion, otherwise use C-q to insert SPC: https://emacs.stackexchange.com/questions/68423/remove-space-autocomplete-from-m-x
 (use-package ebib
@@ -209,6 +209,7 @@
   (define-key pdf-view-mode-map (kbd "C-<f11>") 'toggle-frame-fullscreen)
   (setq mouse-wheel-follow-mouse t)
   (setq pdf-view-resize-factor 1.10)
+  (setq pdf-view-use-scaling t)
   (setq auto-revert-interval 0.5)
   (setq pdf-view-midnight-colors '("#ff9900" . "#0a0a12" ));
   :hook
@@ -222,6 +223,60 @@
   :config
   (add-hook 'pdf-view-mode-hook 'pdf-view-restore-mode)
   )
+(use-package pdffontetc
+  ;; :vc (pdffontetc :url "https://github.com/emacsomancer/pdffontetc"
+  ;;                   :branch "main")
+  :ensure t
+  :pin melpa
+  :config
+  (defun pdffontetc-extra-keys ()
+    "Set some additional keybindings in PDF-Tools for pdffontetc info functions."
+    ;; `O' for `Org-style' Info, = pdf metadata in orgish display:
+    (local-set-key (kbd "O") #'pdffontetc-display-metadata-org-style)
+    ;; `T' for `Typeface', i.e., Font info [since `F' is already taken]:
+    (local-set-key (kbd "T") #'pdffontetc-display-font-information)
+    ;; `U' for `Unified' info, i.e., both Metadata and Font info:
+    (local-set-key (kbd "U") #'pdffontetc-display-combined-metadata-and-font-info))
+
+  (add-hook 'pdf-view-mode-hook #'pdffontetc-extra-keys))
+;;-------------------------------------------------------------
+(use-package electric-ospl ;doesn't delete the linebreak with two consecutive SPC, less useful than twauctex
+  :disabled
+  :ensure t
+  :pin melpa
+  )
+(use-package visual-fill-column
+ ;; :disabled
+  :ensure t
+  :pin melpa
+  :after twauctex
+  :config
+  (global-visual-fill-column-mode 0)
+  (visual-fill-column-mode 0)
+  )
+(use-package twauctex ; also https://www.reddit.com/r/emacs/comments/agufyc/text_mode_automatic_newline_insertion_after/ and https://emacs.stackexchange.com/a/64364/19901
+  :vc (twauctex :url "https://github.com/jeeger/twauctex" ;; not allowing to disable visual-fill-column-mode for some reason 
+                :rev :newest                              ;comment this and reinstall if troubles with ebib!
+                :branch "main"
+                )
+  ;; :disabled
+  :ensure t;nil ; nil required for the :load-path !!! 
+  ;; :load-path "c:/backup/Dropbox/zzz/.emacs.d" ;; this version can't be used becauce it screws up ebib
+  :config
+  (twauctex-global-mode)
+  ;; (with-eval-after-load 'twauctex ;need this to disable visual-fill-column-mode for the earlier version of twauctex: https://chatgpt.com/share/69738ad8-f644-800b-8f0e-bb478c96d365
+  ;; (advice-add 'visual-fill-column-mode :around
+  ;;             (lambda (orig-fun &optional arg)
+  ;;               (unless twauctex-mode
+  ;;                 (funcall orig-fun arg)))))
+   (setq twauctex-use-visual-fill-column nil) ;; comment this and go with the chatgpt solution above if troubles with ebib!
+  )
+
+;; (require 'twauctex "/backup/Dropbox/zzz/.emacs.d/twauctex.el")
+;; (twauctex-global-mode)
+ ;; (setq twauctex-use-visual-fill-column nil)
+  ;; (global-visual-fill-column-mode nil)
+  ;; (global-visual-fill-column-mode -1)
 ;--------------------------------------------------------------
 (defun ysb/latex-buffer-face-mode-variable ()
   (interactive)
@@ -245,7 +300,9 @@
 ;         (message "Running on a large monitor, setting LaTeX font Consolas-181...")
 (setq buffer-face-mode-face '(:height 181 :family "Consolas"))))
   )
-  (buffer-face-mode))
+(buffer-face-mode)
+(visual-fill-column-mode -1)
+)
 ; Consolas 18=181,14=141,20=203 (Samsung 27"); SF Mono-139; 108,102. 120(Samsung),114(T400)
 
 ;; local configuration for TeX modes
@@ -301,6 +358,8 @@
    (LaTeX-mode . visual-line-mode)
    (LaTeX-mode . flyspell-mode)
    (LaTeX-mode . LaTeX-math-mode)
+   ;; (LaTeX-mode . electric-ospl-mode)
+   ;; (LaTeX-mode . company-mode)
    (LaTeX-mode . (lambda ()(setq TeX-source-correlate-method 'synctex) (setq TeX-source-correlate-start-server t)))
    (LaTeX-mode . (lambda ()(LaTeX-add-environments '("xlist" LaTeX-env-item) '("xlisti" LaTeX-env-item) '("exe" LaTeX-env-item) '("eqtext" LaTeX-env-label) '("eqclaim" LaTeX-env-label))(add-to-list 'LaTeX-label-alist '("eqclaim" . "eq:"))))
    (LaTeX-mode . (lambda ()(add-to-list 'LaTeX-item-list '("exe" lambda () (let (TeX-insert-braces) (TeX-insert-macro "ex"))))))
