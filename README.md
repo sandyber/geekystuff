@@ -1,2 +1,2 @@
 # geekystuff
-Bits of Emacs and LaTeX. Uncleaned, unoptimised.
+Bits of Emacs and LaTeX. Uncleaned, unoptimised, yet working.
