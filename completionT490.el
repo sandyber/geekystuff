@@ -92,7 +92,7 @@
   :after ivy
   ;; :custom
   ;; (amx-backend 'auto)
-  ;; (amx-save-file "c:/backup/Dropbox/zzz/.emacs.d/amx-items")
+  ;; (amx-save-file "/backup/Dropbox/zzz/.emacs.d/amx-items")
   ;; (amx-history-length 50)
   ;; (amx-show-key-bindings nil)
   ;; :config
