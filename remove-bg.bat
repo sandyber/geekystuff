@@ -8,7 +8,7 @@ REM Get the name without extension for naming and metadata
 set "BASE_NAME=%~n1"
 
 if "%INPUT_FILE%"=="" (
-    echo Usage: convert.bat filename.pdf 1,2,3-10
+    echo Usage: remove-bg.bat filename.pdf 1,2,3-10
     goto :eof
 )
 
