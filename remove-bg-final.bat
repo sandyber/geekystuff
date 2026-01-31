@@ -1,5 +1,5 @@
-REM Removing gray bg in pdf files. Useful for archive.org files.
 @echo off
+echo Removing gray bg in the input file. Useful for archive.org files.
 setlocal enabledelayedexpansion
 
 REM --- Argument Check ---
@@ -8,7 +8,7 @@ REM Get the name without extension for naming and metadata
 set "BASE_NAME=%~n1"
 
 if "%INPUT_FILE%"=="" (
-    echo Usage: remove-bg.bat filename.pdf 1,2,3-10
+    echo Usage: %~nx0 filename.pdf 1,2,3-10
     goto :eof
 )
 
@@ -27,13 +27,16 @@ if "!RAW_SPEC!"=="" (
 )
 
 REM --- Cleanup & Setup ---
-if exist "final_pdf_pages" (
-    echo Cleaning up old files...
-    del /q "final_pdf_pages\*.pdf"
-) else (
+if not exist "final_pdf_pages" (
     mkdir "final_pdf_pages"
+) else (
+    REM Only attempt delete if there are actually pdf files inside
+    if exist "final_pdf_pages\*.pdf" del /q "final_pdf_pages\*.pdf" 2>nul
 )
-if exist "file_list.txt" del "file_list.txt"
+
+if exist "file_list.txt" del "file_list.txt" 2>nul
+if exist "pages.txt" del "pages.txt" 2>nul
+if exist "docinfo.ps" del "docinfo.ps" 2>nul
 set "CLEAN_SPEC=!RAW_SPEC:,= !"
 
 REM --- The Parser Engine ---
