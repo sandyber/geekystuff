@@ -6,17 +6,20 @@
   :pin melpa
   :ensure t  
   :config ;https://ogbe.net/emacs/references
+  (require 'ebib-ivy)
   (setq
    ebib-default-directory "/backup/Dropbox/bib"
    ebib-bibtex-dialect 'BibTeX
 ;   ebib-file-search-dirs (quote ("/backup/Dropbox/bib"))
-   ebib-index-display-fields (quote ("title")))
+;   ebib-index-display-fields (quote ("title" "author" "year"))) ;; deprecated in favor of ebib-index-columns
 ;   ebib-popup-entry-window nil ;; no effect unless ebib-layout set to 'index-only
 ;   ebib-layout 'index-only
 ;   ebib-notes-directory "/backup/Dropbox/bib/notes"
 ;      ebib-notes-storage 'one-file-per-note
 ;      ebib-notes-locations '("/backup/Dropbox/bib/notes")
-;      ebib-notes-default-file nil
+  ;      ebib-notes-default-file nil
+   )
+  ;; (setq ebib-index-columns '(("Entry Key" 20 t)("Author/Editor" 20 nil)("Year" 6 t)("Title" 40 t)))
 ;; `ebib' uses `bibtex.el' to auto-generate keys for us
   (setq bibtex-autokey-year-length 4)
   (setq bibtex-autokey-name-case-convert-function 'capitalize)
@@ -33,8 +36,17 @@
   (define-key ebib-index-mode-map (kbd "Y") #'ebib-copy-entry-as-kill)
   (define-key ebib-index-mode-map (kbd "B") #'ebib-biblio-import-doi)
   (define-key biblio-selection-mode-map (kbd "e") #'ebib-biblio-selection-import)
+  (setq ebib-citation-commands
+        (quote ((LaTeX-mode
+                 (("cite" "~\\cite[%A]{%K}")("citet" "~\\citet[%A]{%K}")
+                  ("citep" "~\\citep[%A]{%K}")("citeyearpar" "~\\citeyearpar[%A]{%K}"))))))
+  (setq ebib-completion-method 'completion-at-point)
+  ;; (setq ebib-preload-bib-files 
+  ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))
   :custom
-  (ebib-preload-bib-files '("evolnat.bib" "hypocrisy.bib" "progress.bib"));"respect.bib" ))
+  ;; (ebib-preload-bib-files ; preload all the files in the folder, but that's dangerous...
+  ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))
+  (ebib-preload-bib-files '("evolnat.bib" "hypocrisy.bib" "progress.bib" "respect.bib"))
   (ebib-bib-search-dirs '("/backup/Dropbox/bib"))
   (ebib-field-edit-functions ;the original is in ebib-utils.el
    '((("abstract" "addendum" "note" "annotation")
@@ -255,23 +267,49 @@
   (visual-fill-column-mode 0)
   )
 (use-package twauctex ; also https://www.reddit.com/r/emacs/comments/agufyc/text_mode_automatic_newline_insertion_after/ and https://emacs.stackexchange.com/a/64364/19901
-  :vc (twauctex :url "https://github.com/jeeger/twauctex" ;; not allowing to disable visual-fill-column-mode for some reason 
+  :vc (twauctex :url "https://github.com/jeeger/twauctex" 
                 :rev :newest                              ;comment this and reinstall if troubles with ebib!
                 :branch "main"
                 )
   ;; :disabled
-  :ensure t;nil ; nil required for the :load-path !!! 
+  :ensure t ; nil required for the :load-path !!! 
   ;; :load-path "c:/backup/Dropbox/zzz/.emacs.d" ;; this version can't be used becauce it screws up ebib
+  :hook (LaTeX-mode . twauctex-mode)
   :config
-  (twauctex-global-mode)
+  ;; (twauctex-global-mode)
   ;; (with-eval-after-load 'twauctex ;need this to disable visual-fill-column-mode for the earlier version of twauctex: https://chatgpt.com/share/69738ad8-f644-800b-8f0e-bb478c96d365
   ;; (advice-add 'visual-fill-column-mode :around
   ;;             (lambda (orig-fun &optional arg)
   ;;               (unless twauctex-mode
   ;;                 (funcall orig-fun arg)))))
    (setq twauctex-use-visual-fill-column nil) ;; comment this and go with the chatgpt solution above if troubles with ebib!
-  )
-
+;;  (add-hook 'twauctex-mode-hook (lambda () (visual-fill-column-mode -1)))
+  (setq-local sentence-end-double-space nil)
+  ;; 1. The Toggle Variable
+  (defvar ysb/tw-pulse-enabled nil "Whether the twauctex sentence pulse is active by default.")
+  ;; 2. The Toggle Command
+  (defun ysb/tw-pulse-toggle ()
+    "Toggle the sentence pulse highlight on and off."
+    (interactive)
+    (setq ysb/tw-pulse-enabled (not ysb/tw-pulse-enabled))
+    (message "Sentence pulse %s" (if ysb/tw-pulse-enabled "enabled" "disabled")))
+  ;; 3. The Timer-Safe Pulse Logic (with Toggle Check)
+  (defun ysb/tw-simple-pulse (&rest _args)
+    "Pulses the previous line if enabled and at the start of a new line."
+    (when (and ysb/tw-pulse-enabled (bolp))
+      (save-excursion
+        (forward-line -1)
+        (let ((ov (make-overlay (line-beginning-position) (line-end-position))))
+          (overlay-put ov 'priority 100)
+          (overlay-put ov 'face '(:background "#fffacd" :foreground "black"))
+          (run-with-timer 0.4 nil (lambda (timer-ov) 
+                                    (when (overlayp timer-ov)
+                                      (delete-overlay timer-ov))) 
+                          ov)))))
+  ;; 4. Attach to the function 
+  (with-eval-after-load 'twauctex
+    (advice-add 'twauctex-electric-sentence-end-space :after #'ysb/tw-simple-pulse))
+ )
 ;; (require 'twauctex "/backup/Dropbox/zzz/.emacs.d/twauctex.el")
 ;; (twauctex-global-mode)
  ;; (setq twauctex-use-visual-fill-column nil)
@@ -310,9 +348,24 @@
 ;;   (setq-local company-backends
 ;;               (append '((company-math-symbols-latex company-latex-commands))
 ;;                       company-backends)))
+(defun ysb/TeX-remove-macro () ;https://emacs.stackexchange.com/a/7997/19901
+  "Remove current macro and return `t'.  If no macro at point,
+return `nil'."
+  (interactive)
+  (when (TeX-current-macro)
+    (let ((bounds (TeX-find-macro-boundaries))
+          (brace  (save-excursion
+                    (goto-char (1- (TeX-find-macro-end)))
+                    (TeX-find-opening-brace))))
+      (delete-region (1- (cdr bounds)) (cdr bounds))
+      (delete-region (car bounds) (1+ brace)))
+    t)
+  )
 (use-package latex
   :ensure auctex
-  :bind ([f4] . TeX-engine-set)
+  :bind
+  ([f4] . TeX-engine-set)
+  ("C-x m" . ysb/TeX-remove-macro)
   :custom
   (TeX-command-list ;https://gitlab.com/jabranham/emacs/blob/master/init.el; auctex 14 needs capital letters in modes...
    '(("LaTeX" "%`%l%(mode)%' %T" TeX-run-TeX nil
@@ -352,7 +405,7 @@
          )
    :hook
    ;; (LaTeX-mode . ysb/latex-mode-setup)
-   (LaTeX-mode . (lambda () (setq global-hl-line-mode nil)))
+   (LaTeX-mode . (lambda () (setq global-hl-line-mode t)))
    (LaTeX-mode . ysb/latex-buffer-face-mode-variable)
    (LaTeX-mode . turn-on-reftex)
    (LaTeX-mode . visual-line-mode)

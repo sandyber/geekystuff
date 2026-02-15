@@ -40,26 +40,33 @@
       '((swiper-isearch . regexp-quote)  ; allow exact match in swiper, to disable press M-r in swiper before typing: https://emacs.stackexchange.com/a/41549/19901
         (t      . ivy--regex-ignore-order))) ;; allow input not in order
       ;; '((t   . ivy--regex-ignore-order)))  
+  (setopt ivy-use-selectable-prompt t) ;also useful ivy-immediate-done: https://www.reddit.com/r/emacs/comments/yy08bm/ivy/
 )
 ;;---------------------------------------------
 (use-package ivy-rich
   :disabled
   :ensure t
   :pin melpa
-  :config
-  (ivy-rich-mode)
-  (setcdr (assq t ivy-format-functions-alist) #'ivy-format-function-line)
+  :init
+  (ivy-rich-mode 1)
+  ;; :config
+  ;; (ivy-rich-mode)
+  ;; (setcdr (assq t ivy-format-functions-alist) #'ivy-format-function-line)
   )
 (use-package marginalia
- ;; :disabled
+  ;; :disabled
   :ensure t
   :pin melpa
-  :config
+  :custom
+  (marginalia-max-relative-age 0)
+;    (marginalia-align 'right)
+;    (marginalia-align-offset -5)
+  :init
   (marginalia-mode)
+;  (setq marginalia-annotators '(marginalia-annotators-heavy marginalia-annotators-light nil))
   )
 ;---------------------------------------------
 (use-package counsel                    ;https://ladicle.com/post/config/ apparently need this to activate map binding?
-  ;; :disabled
   :ensure t
   :pin melpa
     :diminish ivy-mode counsel-mode
@@ -84,8 +91,6 @@
 ;;   :after (ivy avy)
 ;;   )
 ;---------------------------------------------
-;; (use-package amx; allow history in counsel
-;;   :ensure t)
 (use-package amx; allow history in counsel
   :ensure t
   :pin melpa
@@ -213,6 +218,15 @@
 ;;   (ivy-posframe-mode 1)
 ;;   )
 ;---------------------------------------------------------------------
+;; (with-eval-after-load 'counsel ;added to prevent crashes after Feb 2026 update of ivy
+;;   (defun counsel-M-x-action (input)
+;;     "A hardened version of the counsel action to prevent stringp errors."
+;;     (let ((cmd (cond ((stringp input) (intern input))
+;;                      ((listp input) (car input))
+;;                      (t input))))
+;;       (setq record cmd)
+;;       (command-execute cmd record))))
+;-----------------------------------------------------------------
 (use-package vertico
   :disabled
   :ensure t
