@@ -40,7 +40,6 @@
         (quote ((LaTeX-mode
                  (("cite" "~\\cite[%A]{%K}")("citet" "~\\citet[%A]{%K}")
                   ("citep" "~\\citep[%A]{%K}")("citeyearpar" "~\\citeyearpar[%A]{%K}"))))))
-  (setq ebib-completion-method 'completion-at-point)
   ;; (setq ebib-preload-bib-files 
   ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))
   :custom
