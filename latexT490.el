@@ -4,9 +4,9 @@
 (use-package ebib
   :defer t
   :pin melpa
-  :ensure t  
+  :ensure t
+  :init
   :config ;https://ogbe.net/emacs/references
-  (require 'ebib-ivy)
   (setq
    ebib-default-directory "/backup/Dropbox/bib"
    ebib-bibtex-dialect 'BibTeX
@@ -19,7 +19,7 @@
 ;      ebib-notes-locations '("/backup/Dropbox/bib/notes")
   ;      ebib-notes-default-file nil
    )
-  ;; (setq ebib-index-columns '(("Entry Key" 20 t)("Author/Editor" 20 nil)("Year" 6 t)("Title" 40 t)))
+  (setq ebib-index-columns '(("Entry Key" 20 t)("Author/Editor" 20 nil)("Year" 6 t)("Title" 40 t)))
 ;; `ebib' uses `bibtex.el' to auto-generate keys for us
   (setq bibtex-autokey-year-length 4)
   (setq bibtex-autokey-name-case-convert-function 'capitalize)
@@ -41,7 +41,7 @@
                  (("cite" "~\\cite[%A]{%K}")("citet" "~\\citet[%A]{%K}")
                   ("citep" "~\\citep[%A]{%K}")("citeyearpar" "~\\citeyearpar[%A]{%K}"))))))
   ;; (setq ebib-preload-bib-files 
-  ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))
+  ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))  
   :custom
   ;; (ebib-preload-bib-files ; preload all the files in the folder, but that's dangerous...
   ;;       (directory-files "/backup/Dropbox/bib" t "^[^.#].*\\.bib$"))
@@ -71,6 +71,49 @@
      (("publisher" "origpublisher")
       . ebib--edit-list-field)))
   )
+(use-package citar
+  :custom
+  (citar-bibliography '("c:/backup/Dropbox/bib/evolnat.bib" 
+                        "c:/backup/Dropbox/bib/respect.bib"
+                        "c:/backup/Dropbox/bib/hypocrisy.bib"
+                        "c:/backup/Dropbox/bib/progress.bib"))
+  :hook
+  (LaTeX-mode . citar-capf-setup)
+  :config
+  (with-eval-after-load 'citar-latex
+  (setq citar-latex-cite-commands
+        '((("citet" "citep") . (["Argument 1"] ["Argument 2"] t))
+          (("citeyearpar" "citeyear") . nil))))
+  (setq citar-latex-default-cite-command "citet")
+(defun ysb/citar-append-bib-basename (orig-fun bib)
+  "After pre-formatting, append the bib basename in italics and smaller font."
+  (funcall orig-fun bib)
+  (let* ((filename (citar-cache--bibliography-filename bib))
+         ;; Propertize the name with italic and a subtle/small face
+         (bibname (propertize (concat "  " (file-name-nondirectory filename))
+                             'face '(:slant italic :height 0.8 :inherit shadow)))
+         (preformatted (citar-cache--bibliography-preformatted bib)))
+    (maphash (lambda (_key preform)
+               (when (and preform (listp (cdr preform)))
+                 (setf (cdr preform)
+                       (nconc (cdr preform) (list bibname)))))
+             preformatted)))
+(with-eval-after-load 'citar
+  (setq citar-templates
+        '((main . "${author editor:25%sn}   ${date year issued:8}   ${title:30}")
+          ;; We increase the width for =source= to 30 and put it at the start of the suffix
+          (suffix . " ${=source=:30} ${=key= id:15}")
+          (preview . "${author editor:%etal} (${year issued date}) ${title}.\n")
+          (note . "Notes on ${author editor:%etal}, ${title}"))))
+(advice-add 'citar-cache--preformat-bibliography :around #'ysb/citar-append-bib-basename)
+)
+
+(use-package citar-embark
+  :after (citar embark)
+  :no-require
+  :config (citar-embark-mode)
+)
+
 (use-package biblio
   :ensure t
   :pin melpa
@@ -488,3 +531,41 @@ return `nil'."
 ;;       (lambda ()
 ;;         (define-key LaTeX-mode-map (kbd "'") 'mg-TeX-insert-single-quote)))
 ;
+
+;;   (defun my-citar-fixed-prefix (filename width)
+;;   "Return a fixed-width prefix string for FILENAME, WIDTH chars total.
+;; Filename left-aligned, padded right with spaces, truncated with … if too long.
+;; Ends with | followed by two spaces."
+;;   (let* ((base (file-name-nondirectory filename))          ; e.g. "physics.bib"
+;;          (avail (- width 3))                                ; reserve 3 for "|  "
+;;          (truncated (if (> (length base) avail)
+;;                         (concat (substring base 0 (- avail 1)) "…")
+;;                       base))
+;;          (padded (format (concat "%-" (number-to-string avail) "s") truncated)))
+;;     (concat padded "|  ")))
+;;   (defun my-citar-prepend-bib-prefix (orig-fun bib)
+;;   "Prepend fixed-width bib filename prefix to every candidate in BIB."
+;;   (funcall orig-fun bib)  ; run original preformatting first
+;;   (let* ((filename (citar-cache--bibliography-filename bib))
+;;          (prefix (my-citar-fixed-prefix filename 20))  ; <--- change 20 here if needed
+;;          (preformatted (citar-cache--bibliography-preformatted bib)))
+;;     (maphash (lambda (_key preform)
+;;                (when (and preform (consp (cdr preform)))
+;;                  ;; Insert prefix as FIRST visible part
+;;                  (setcdr preform (cons prefix (cdr preform)))))
+;;              preformatted)))
+
+;; ;(advice-add 'citar-cache--preformat-bibliography :around #'my-citar-prepend-bib-prefix)
+
+  ;; (defun ysb-old/citar-append-bib-basename (orig-fun bib)
+  ;; "After pre-formatting, append the bib basename visibly to every candidate."
+  ;; (funcall orig-fun bib)  ; let the original do all its work first
+  ;; (let ((bibname (file-name-nondirectory (citar-cache--bibliography-filename bib)))
+  ;;       (preformatted (citar-cache--bibliography-preformatted bib)))
+  ;;   (maphash (lambda (_key preform)
+  ;;              (when (and preform (listp (cdr preform)))
+  ;;                ;; append one more visible part at the end of the list
+  ;;                (setf (cdr preform)
+  ;;                      (nconc (cdr preform)
+  ;;                             (list (format " |%s|" bibname))))))
+  ;;            preformatted)))
