@@ -118,8 +118,57 @@
       :ensure t
 ))
 
+(use-package cape
+  :disabled
+  :ensure t
+  :init
+  ;; 1. Tell Cape where your dictionary is
+  (setq cape-dict-file "/backup/Dropbox/zzz/emacs/hunspell/english-words.txt")
+
+  ;; 2. Add the dictionary and dabbrev (buffer words) to the completion list
+  (add-to-list 'completion-at-point-functions #'cape-dict)
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  
+  ;; Optional: If you want LaTeX-specific completions to always be available
+  (add-to-list 'completion-at-point-functions #'cape-tex))
+
+(use-package corfu
+  :disabled
+  :ensure t
+  :init
+  (global-corfu-mode)
+  :custom
+  (corfu-auto nil)              ;; Set to nil if you only want it when YOU trigger it
+  (corfu-quit-at-boundary nil)
+  ;; :bind 
+  ;; ;; 1. Use this to TRIGGER the menu
+  ;; ("C-x 0" . completion-at-point)
+  
+  ;; ;; 2. Use this to SELECT the word once the menu is open
+  ;; (:map corfu-map
+  ;;       ("C-x 0" . corfu-complete))
+  :config
+    ;; TAB cycle if there are only few candidates
+  ;; (completion-cycle-threshold 3)
+
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  (tab-always-indent 'complete)
+
+  ;; Emacs 30 and newer: Disable Ispell completion function.
+  ;; Try `cape-dict' as an alternative.
+  (text-mode-ispell-word-completion nil) ;use this for cape
+  )
+;; A few more useful configurations...
+(use-package emacs
+  :custom
+  ;; Hide commands in M-x which do not apply to the current mode.  Corfu
+  ;; commands are hidden, since they are not used via M-x. This setting is
+  ;; useful beyond Corfu.
+  (read-extended-command-predicate #'command-completion-default-include-p)
+)
+
 (use-package company
-  ;; :disabled
   :ensure t
   :pin melpa
   :demand t
@@ -130,7 +179,22 @@
   :config
   ;; (add-hook 'prog-mode-hook 'company-mode)
   ;; (add-hook 'text-mode-hook 'company-mode)
-;  (add-hook 'after-init-hook 'global-company-mode)
+  ;  (add-hook 'after-init-hook 'global-company-mode)
+  (setq company-backends '((company-capf company-dabbrev-code) ; :with company-dabbrev-code
+                           company-files
+                           company-dabbrev))
+  ;; (add-hook 'emacs-lisp-mode-hook ;'prog-mode-hook
+  ;;           (lambda ()
+  ;;             (setq-local company-idle-delay 0.2)))
+  (defun ysb/toggle-company-auto ()
+  "Switch between manual and automatic company completion."
+  (interactive)
+  (if company-idle-delay
+      (setq-local company-idle-delay nil)
+    (setq-local company-idle-delay 0.2))
+  (message "Company auto-popup is now %s" 
+           (if company-idle-delay "ON" "OFF")))
+
   (setq company-selection-wrap-around t
         company-show-numbers t
         company-format-margin-function nil ;disable icons
@@ -154,5 +218,5 @@
 ;; (define-key company-active-map [escape] 'company-abort) ;https://github.com/company-mode/company-mode/discussions/1356#discussioncomment-4469605
   ;; (define-key company-mode-map (kbd "<tab>") 'company-complete)
   :custom
-  (company-idle-delay nil) ;; turn off auto-completion
+  (company-idle-delay nil) ;; turn off auto-completion by default
   )

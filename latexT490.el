@@ -8,7 +8,7 @@
   :init
   :config ;https://ogbe.net/emacs/references
   (setq
-   ebib-default-directory "/backup/Dropbox/bib"
+   ebib-default-directory "/backup/Dropbox/bib/"
    ebib-bibtex-dialect 'BibTeX
 ;   ebib-file-search-dirs (quote ("/backup/Dropbox/bib"))
 ;   ebib-index-display-fields (quote ("title" "author" "year"))) ;; deprecated in favor of ebib-index-columns
