@@ -26,7 +26,7 @@
   (vertico-count 10)  ;; limit to a fixed size
 ;  (vertico-scroll-margin 0) ;; Different scroll margin
   ;; (vertico-count 20) ;; Show more candidates
-  (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
+  (vertico-resize nil) ;; Do not grow or shrink dynamically the Vertico minibuffer
   :bind (:map vertico-map
     ;; Use page-up/down to scroll vertico buffer, like ivy does by default.
     ("<prior>" . 'vertico-scroll-down)
@@ -73,13 +73,18 @@
   :ensure t
   :custom
   ;; Activate orderless completion
-  (completion-styles '(orderless)) ;basic
+  (completion-styles '(orderless basic)) 
   ;; Enable partial completion for file wildcard support
   (completion-category-overrides '((file (styles partial-completion))))
   )
 
 (use-package consult
   :ensure t
+  :init
+  (setq
+     consult-line-start-from-top t 
+     consult-line-point-placement 'match-beginning
+     )
   :config
   ;; Disable preview
   (setq consult-preview-key '("S-<down>" "S-<up>"))
@@ -87,25 +92,21 @@
   (consult-customize ;https://github.com/minad/consult#live-previews
    consult-line :preview-key 'any
    )
-(defun consult-switch-buffer-kill ()
-  "Kill buffer and remove it from the current completion session."
-  (interactive)
-  ;; Get the candidate (removing the irregular char as you did)
-  (let* ((cand (vertico--candidate))
-         (name (substring cand 0 -1)))
-    (when (get-buffer name)
-      (kill-buffer name)
-      ;; Manually filter the killed buffer out of the current Vertico list
-      (setq vertico--candidates 
+  (defun consult-switch-buffer-kill ()
+    "Kill buffer and remove it from the current completion session."
+    (interactive)
+    ;; Get the candidate (removing the irregular char as you did)
+    (let* ((cand (vertico--candidate))
+           (name (substring cand 0 -1)))
+      (when (get-buffer name)
+        (kill-buffer name)
+        ;; Manually filter the killed buffer out of the current Vertico list
+        (setq vertico--candidates 
             (delete cand vertico--candidates))
       ;; Decrement the count so the UI stays accurate
       (setq vertico--total (1- vertico--total))
       ;; Now force the redraw
       (vertico--exhibit))))
-  ;; :bind
-  ;; (("C-x b" . 'consult-buffer)    ;; Switch buffer, including recentf and bookmarks
-  ;;  ("M-l"   . 'consult-git-grep)  ;; Search inside a project
-  ;;  )
 )
 (use-package embark
   :ensure t

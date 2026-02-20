@@ -187,71 +187,6 @@
           (?Y. "~\\citeyear[]{%l}")
           ))
   )
-;; (add-hook 'LaTeX-mode-hook
-;;           #'(lambda ()
-;;             (define-key LaTeX-mode-map (kbd "$") 'self-insert-command))); for electric-pair-mode
-    ;(setq reftex-label-alist '(AMSTeX))
-;-----------------------------------------
-;; Automatically add labels to eqclaim
-;; (add-hook
-;;  'LaTeX-mode-hook
-;;  (lambda ()
-;;    (LaTeX-add-environments
-;;     '("xlist" LaTeX-env-item)
-;;     '("exe" LaTeX-env-item)
-;;     '("eqtext" LaTeX-env-label)
-;;     '("eqclaim" LaTeX-env-label))
-;;    (add-to-list 'LaTeX-label-alist '("eqclaim" . "eq:"))))
-;(add-hook 'LaTeX-mode-hook 'add-my-latex-environments);; non-automatically add labels
-;(defun add-my-latex-environments ()
-;  (LaTeX-add-environments
-;   '("eqclaim" LaTeX-env-label)
-;   '("eqtext" LaTeX-env-label)))
-;
-;(setq reftex-label-alist
-;   '(("axiom"   ?e "ax:"  "~\\ref{%s}" nil ("axiom"   "ax.") nil)
-;     ("theorem" ?h "thr:" "~\\ref{%s}" t   ("theorem" "th."))))
-;    
-;; (setq reftex-label-alist
-;;   ;'(("eqclaim" ?e nil nil t)
-;;   '(("eqclaim" ?e "eq:" "~\\eqref{%s}" t  ("eqclaim" "eq." ))
-;;   ("exe" ?e "eq:" "~\\eqref{%s}" t  ("exe" "exe." ))
-;;    ("eqtext" ?e nil nil t))
-;;   reftex-insert-label-flags '("s" "ft"))
-;;;
-;(global-set-key (kbd "C-c l") 'call-reftex-label-directly)
-;;;
-;(setq reftex-label-alist
-;      '(
-;        ("eq" ?e "eq:%f" "~\ref{%s}" nil ("eqclaim") nil)
-;        ))
-;
-;; (add-hook 'LaTeX-mode-hook #'(lambda ()
-;;      (add-to-list 'LaTeX-item-list
-;; 		  '("exe" lambda () (let (TeX-insert-braces) (TeX-insert-macro "ex"))))))
-;; (add-hook 'LaTeX-mode-hook #'(lambda ()
-;;      (add-to-list 'LaTeX-item-list
-;; 		  '("xlist" lambda () (let (TeX-insert-braces) (TeX-insert-macro "ex"))))))
-;(setq TeX-engine 'xetex)
-;
-;
-;(add-hook 'LaTeX-mode-hook 'my-latex-buffer-face-mode-variable)
-;
-;(setq LaTeX-verbatim-environments-local '("quote" "quotation")) ;; to highlight quote environments
-;----------------PDF Tools: requires synctex=1 -----------------------
-;; (setq LaTeX-command-style '(("" "%(PDF)%(latex) -synctex=1 -file-line-error %S%(PDFout)")))
-;; (add-hook 'LaTeX-mode-hook
-;;             (lambda ()
-;; 	      (setq TeX-source-correlate-method 'synctex)
-;;               (setq TeX-source-correlate-start-server t)))
-;
-;; to use pdfview with auctex
-;(add-hook 'LaTeX-mode-hook 'pdf-tools-install)
-
-;; to use pdfview with auctex
-;; (setq TeX-view-program-selection '((output-pdf "pdf-tools"))
-;;        TeX-source-correlate-start-server t)
-;; (setq TeX-view-program-list '(("pdf-tools" "TeX-pdf-tools-sync-view")))
 
 (use-package pdf-tools ;if install within emacs fails, try installing this first in msys2
   :ensure t
@@ -358,32 +293,63 @@
   ;; (global-visual-fill-column-mode nil)
   ;; (global-visual-fill-column-mode -1)
 ;--------------------------------------------------------------
-(defun ysb/latex-buffer-face-mode-variable ()
-  (interactive)
-;; (if (string= system-name "T490S")
-;;      (setq buffer-face-mode-face '(:overline nil :underline nil :slant normal :weight normal :height 141 :width normal :family "Consolas")) 
-;;   (setq buffer-face-mode-face '(:overline nil :underline nil :slant normal :weight normal :height 181 :width normal :family "Consolas"))
+;; (defun ysb/old-latex-buffer-face-mode-variable ()
+;;   (interactive)
+;; ;; (if (string= system-name "T490S")
+;; ;;      (setq buffer-face-mode-face '(:overline nil :underline nil :slant normal :weight normal :height 141 :width normal :family "Consolas")) 
+;; ;;   (setq buffer-face-mode-face '(:overline nil :underline nil :slant normal :weight normal :height 181 :width normal :family "Consolas"))
+;; ;;   )
+;; (cond ((string= system-name ysb/system);"T490S")
+;;        (progn
+;;          (message "%s" (concat "Running on "  system-name ", setting setting LaTeX font Consolas-141..."))
+;;  ;        (message "Running on T490S, setting LaTeX font Consolas-141...")
+;;          (setq buffer-face-mode-face '(:height 141 :family "Consolas"))))
+;;       ((string= system-name ysb/systemalt);"T490s")
+;;        (progn
+;;          (message "%s" (concat "Running on "  system-name ", setting setting LaTeX font Consolas-141..."))
+;; ;         (message "Running on T490s, setting LaTeX font Consolas-141...") ;;due to weird behaviour mixing T490s and T490S
+;;          (setq buffer-face-mode-face '(:height 141 :family "Consolas"))))
+;;       (t                                ;default setting
+;;        (progn
+;;          (message "%s" (concat "Running on a larger monitor on "  system-name " machine, setting LaTeX font Consolas-181..."))
+;; ;         (message "Running on a large monitor, setting LaTeX font Consolas-181...")
+;; (setq buffer-face-mode-face '(:height 181 :family "Consolas"))))
 ;;   )
-(cond ((string= system-name ysb/system);"T490S")
-       (progn
-         (message "%s" (concat "Running on "  system-name ", setting setting LaTeX font Consolas-141..."))
- ;        (message "Running on T490S, setting LaTeX font Consolas-141...")
-         (setq buffer-face-mode-face '(:height 141 :family "Consolas"))))
-      ((string= system-name ysb/systemalt);"T490s")
-       (progn
-         (message "%s" (concat "Running on "  system-name ", setting setting LaTeX font Consolas-141..."))
-;         (message "Running on T490s, setting LaTeX font Consolas-141...") ;;due to weird behaviour mixing T490s and T490S
-         (setq buffer-face-mode-face '(:height 141 :family "Consolas"))))
-      (t                                ;default setting
-       (progn
-         (message "%s" (concat "Running on a larger monitor on "  system-name " machine, setting LaTeX font Consolas-181..."))
-;         (message "Running on a large monitor, setting LaTeX font Consolas-181...")
-(setq buffer-face-mode-face '(:height 181 :family "Consolas"))))
-  )
-(buffer-face-mode)
-(visual-fill-column-mode -1)
-)
-; Consolas 18=181,14=141,20=203 (Samsung 27"); SF Mono-139; 108,102. 120(Samsung),114(T400)
+;; (buffer-face-mode)
+;; (visual-fill-column-mode -1)
+;; )
+;; (defun ysb/old--one-latex-buffer-face-mode-variable ()
+;;   (let* ((monitor-info (car (display-monitor-attributes-list)))
+;;         (mm-dimensions (cdr (assoc 'mm-size monitor-info)))
+;;         (width-mm (car mm-dimensions)))
+      
+;;       (if (and width-mm (> width-mm 500))
+
+;;           ;; Large Display Logic
+;;       (progn
+;;         (message "Large display detected (%dmm): setting default font Consolas-181" width-mm)
+;;       (setq buffer-face-mode-face '(:height 181 :family "Consolas")))
+    
+;;     ;; Small Display Logic
+;;     (progn
+;;       (message "Small display detected: setting default font Consolas-141")
+;;       (setq buffer-face-mode-face '(:height 141 :family "Consolas")))))
+;; (buffer-face-mode)
+;; (visual-fill-column-mode -1)
+;; )
+(defun ysb/latex-buffer-face-mode-variable ()
+  "Adjust buffer-local face for LaTeX based on monitor width."
+  (if (> ysb-monitor-width ysb-large-display-threshold);; ysb-is-large-display
+    (progn
+        (message "Large display detected (%dmm): setting default font Consolas-18" ysb-monitor-width)
+        (setq buffer-face-mode-face '(:height 181 :family "Consolas")))
+    (progn
+        (message "Small display detected (%dmm): setting default font Consolas-14" ysb-monitor-width)      
+        (setq buffer-face-mode-face '(:height 141 :family "Consolas"))))
+  
+  (buffer-face-mode)
+  (visual-fill-column-mode -1))
+  ; Consolas 18=181,14=141,20=203 (Samsung 27"); SF Mono-139; 108,102. 120(Samsung),114(T400)
 
 ;; local configuration for TeX modes
 ;; (defun ysb/latex-mode-setup ()
@@ -466,106 +432,3 @@ return `nil'."
   ;; (add-to-list 'LaTeX-font-list
   ;;              '(?\C-w "\\word{" "}"))
    )
-;--------------------------------------------------------------
-;
-;; (defun wrap-footnote ()
-;;   (interactive)
-;;     (goto-char (region-end)) (insert "}")
-;;     (goto-char (region-beginning)) (insert "\\footnote{")
-;;     (goto-char (region-end))
-;; )
-;; (global-set-key (kbd "M-F") 'wrap-footnote)
-;
-;(eval-after-load "tex"
-;  '(setcdr (assoc "BibTeX" TeX-command-list)
-;          '("bibtex --min-crossrefs=1 %s"
-;            TeX-run-BibTeX nil t :help "Run BibTeX with ...")))
-; -------------------------------------
-; Inserting and wrapping single quotes
-; -------------------------------------
-;; (defun mg-TeX-insert-single-quote (force)
-;;   "Insert the appropriate quotation marks for TeX.
-;; Inserts ` or ' depending on the context.  With prefix argument
-;; FORCE, always inserts ' characters."
-;;   (interactive "*P")
-;;   (if (or force
-;;       ;; Do not insert TeX quotes in verbatim, math or comment constructs.
-;;       (and (fboundp 'font-latex-faces-present-p)
-;;            (font-latex-faces-present-p '(font-latex-verbatim-face
-;;                          font-latex-math-face
-;;                          font-lock-comment-face))
-;;            (font-latex-faces-present-p '(font-latex-verbatim-face
-;;                          font-latex-math-face
-;;                          font-lock-comment-face)
-;;                        (1- (point))))
-;;       (texmathp)
-;;       (and (TeX-in-comment) (not (eq major-mode 'doctex-mode))))
-;;       (self-insert-command (prefix-numeric-value force))
-;;     (TeX-update-style)
-;;     (let* ((open-quote "`")
-;;        (close-quote "'"))
-;;       (insert (cond ((bobp)
-;;              open-quote)
-;;             ((= (preceding-char) (string-to-char TeX-esc))
-;;              ?\')
-;;             ((= (preceding-char) ?\")
-;;              ?')
-;;             ((save-excursion
-;;                (forward-char (- (length open-quote)))
-;;                (looking-at (regexp-quote open-quote)))
-;;              (delete-char (- (length open-quote)))
-;;              ?')
-;;             ((save-excursion
-;;                (forward-char (- (length close-quote)))
-;;                (looking-at (regexp-quote close-quote)))
-;;              (delete-char (- (length close-quote)))
-;;              ?')
-;;             ((save-excursion
-;;                (forward-char -1)
-;;                (looking-at "[ \t\n]\\|\\s("))
-;;              open-quote)
-;;             (t
-;;              close-quote))))))
-
-;;   (add-hook 'LaTeX-mode-hook
-;;       (lambda ()
-;;         (define-key LaTeX-mode-map (kbd "'") 'mg-TeX-insert-single-quote)))
-;
-
-;;   (defun my-citar-fixed-prefix (filename width)
-;;   "Return a fixed-width prefix string for FILENAME, WIDTH chars total.
-;; Filename left-aligned, padded right with spaces, truncated with … if too long.
-;; Ends with | followed by two spaces."
-;;   (let* ((base (file-name-nondirectory filename))          ; e.g. "physics.bib"
-;;          (avail (- width 3))                                ; reserve 3 for "|  "
-;;          (truncated (if (> (length base) avail)
-;;                         (concat (substring base 0 (- avail 1)) "…")
-;;                       base))
-;;          (padded (format (concat "%-" (number-to-string avail) "s") truncated)))
-;;     (concat padded "|  ")))
-;;   (defun my-citar-prepend-bib-prefix (orig-fun bib)
-;;   "Prepend fixed-width bib filename prefix to every candidate in BIB."
-;;   (funcall orig-fun bib)  ; run original preformatting first
-;;   (let* ((filename (citar-cache--bibliography-filename bib))
-;;          (prefix (my-citar-fixed-prefix filename 20))  ; <--- change 20 here if needed
-;;          (preformatted (citar-cache--bibliography-preformatted bib)))
-;;     (maphash (lambda (_key preform)
-;;                (when (and preform (consp (cdr preform)))
-;;                  ;; Insert prefix as FIRST visible part
-;;                  (setcdr preform (cons prefix (cdr preform)))))
-;;              preformatted)))
-
-;; ;(advice-add 'citar-cache--preformat-bibliography :around #'my-citar-prepend-bib-prefix)
-
-  ;; (defun ysb-old/citar-append-bib-basename (orig-fun bib)
-  ;; "After pre-formatting, append the bib basename visibly to every candidate."
-  ;; (funcall orig-fun bib)  ; let the original do all its work first
-  ;; (let ((bibname (file-name-nondirectory (citar-cache--bibliography-filename bib)))
-  ;;       (preformatted (citar-cache--bibliography-preformatted bib)))
-  ;;   (maphash (lambda (_key preform)
-  ;;              (when (and preform (listp (cdr preform)))
-  ;;                ;; append one more visible part at the end of the list
-  ;;                (setf (cdr preform)
-  ;;                      (nconc (cdr preform)
-  ;;                             (list (format " |%s|" bibname))))))
-  ;;            preformatted)))
