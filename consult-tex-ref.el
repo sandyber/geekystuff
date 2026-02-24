@@ -20,27 +20,27 @@
 (require 'consult)
 
 ;;;###autoload
-(defun consult-tex-reference ()
+(defun consult-tex-ref-reference ()
   "Use consult to find a reference."
   (interactive)
   (push-mark (point) t)
   (when (fboundp 'evil--jumps-push) (evil--jumps-push))
-  (goto-char (consult-tex--find-reference)))
+  (goto-char (consult-tex-ref--find-reference)))
 
 
 ;;;###autoload
-(defun consult-tex-insert-reference ()
+(defun consult-tex-ref-insert-reference ()
   "Use consult to insert a reference."
   (interactive)
   (when (or (eq (char-before) ? ) (eq (char-before) ?~)) (delete-char -1))
   (insert (format "~\\ref{%s}"
 		  (save-excursion
-		    (goto-char (consult-tex--find-reference))
+		    (goto-char (consult-tex-ref--find-reference))
 		    (re-search-forward "\\(.*\\)}" nil t)
 		    (match-string-no-properties 1)))))
 
 
-(defun consult-tex--collect-files ()
+(defun consult-tex-ref--collect-files ()
   "Return a list of all tex files in the project starting from the master file."
   (let* ((master-name (or (and (boundp 'TeX-master)
                                (stringp TeX-master)
@@ -64,7 +64,7 @@
             (push included files)))))
     (delete-dups (nreverse files))))
 
-(defun consult-tex--annotate (cand)
+(defun consult-tex-ref--annotate (cand)
   "Show line number and source line for CAND as annotation."
   (when-let* ((loc (get-text-property 0 'consult-location cand))
               (marker (car loc))
@@ -81,12 +81,12 @@
                  'face 'completions-annotations)))))))
 
 
-(defun consult-tex--find-reference ()
-  "Internal function for \\='consult-tex-reference'."
+(defun consult-tex-ref--find-reference ()
+  "Internal function for \\='consult-tex-ref-reference'."
   (interactive)
   (let ((refs ())
         (current-buf (current-buffer)))
-    (dolist (file (consult-tex--collect-files))
+    (dolist (file (consult-tex-ref--collect-files))
       (with-current-buffer (find-file-noselect file)
         (save-excursion
           (goto-char 0)
@@ -118,7 +118,7 @@
     (consult--read
      refs
      :prompt "References:"
-     :annotate #'consult-tex--annotate
+     :annotate #'consult-tex-ref--annotate
      :category 'consult-location
      :sort nil
      :require-match t
