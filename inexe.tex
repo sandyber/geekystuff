@@ -1,0 +1,305 @@
+%% inexe.tex
+%% A display-math-style linguistic example environment.
+%% Load with \input{inexe} in your preamble.
+%%
+%% Configuration (set these BEFORE \input{inexe}):
+%%
+%%   \def\inexedelimiter{parens}   % or: brackets, period
+%%   \newlength{\inexelabelsep}
+%%   \setlength{\inexelabelsep}{1em}
+%%
+%% Counter sharing with gb4e:
+%%   If gb4e is loaded, inexe automatically shares gb4e's \exx counter.
+%%
+%% Usage:
+%%   \begin{inexe}
+%%     \ex{Consider sub-examples:
+%%       \begin{inxlist}     % a. b. c.  (default, like xlist)
+%%         \xi First sub-example.
+%%         \xij[*] Bad sub-example.
+%%         \xisn Unnumbered sub-example.
+%%       \end{inxlist}}
+%%     \ex{Roman sub-examples:
+%%       \begin{inxlisti}    % i. ii. iii.  (like xlisti)
+%%         \xi First.
+%%         \xi Second.
+%%       \end{inxlisti}}
+%%   \end{inexe}
+%%
+%% Inxlist variants (all support \xi, \xij, \xisn, \xisnj):
+%%   inxlist   a. b. c.      (mirrors xlist/xlista)
+%%   inxlisti  i. ii. iii.   (mirrors xlisti)
+%%   inxlistn  1. 2. 3.      (mirrors xlistn)
+%%   inxlistA  A. B. C.      (mirrors xlistA)
+%%   inxlistI  I. II. III.   (mirrors xlistI)
+
+%% ---------------------------------------------------------------
+%% Guard against double-loading
+%% ---------------------------------------------------------------
+\expandafter\ifx\csname inexe@loaded\endcsname\relax
+\expandafter\def\csname inexe@loaded\endcsname{}
+\else
+  \expandafter\endinput
+\fi
+
+\makeatletter
+
+%% ---------------------------------------------------------------
+%% User-configurable defaults
+%% (Only set if not already defined by the user before \input.)
+%% ---------------------------------------------------------------
+
+\@ifundefined{inexedelimiter}{\def\inexedelimiter{parens}}{}
+
+\@ifundefined{inexelabelsep}{%
+  \newlength{\inexelabelsep}%
+  \setlength{\inexelabelsep}{1em}%
+}{}
+
+%% ---------------------------------------------------------------
+%% Label formatting
+%% ---------------------------------------------------------------
+
+\def\inexe@fmt#1{%
+  \ifx\inexedelimiter\@inexe@parens (#1)\else
+  \ifx\inexedelimiter\@inexe@brackets [#1]\else
+  \ifx\inexedelimiter\@inexe@period #1.\else
+  (#1)%
+  \fi\fi\fi
+}
+\def\@inexe@parens{parens}
+\def\@inexe@brackets{brackets}
+\def\@inexe@period{period}
+
+%% ---------------------------------------------------------------
+%% Counter
+%% ---------------------------------------------------------------
+
+\@definecounter{inexecnt}
+
+\def\inexe@stepcounter{%
+  \refstepcounter{inexecnt}%
+  \protected@edef\@currentlabel{\arabic{inexecnt}}%
+}
+\def\inexe@thecounter{\arabic{inexecnt}}
+
+\AtBeginDocument{%
+  \@ifundefined{c@exx}{}{%
+    \def\inexe@stepcounter{%
+      \refstepcounter{exx}%
+      \setcounter{inexecnt}{\value{exx}}%
+      \protected@edef\@currentlabel{\arabic{exx}}%
+    }%
+    \def\inexe@thecounter{\arabic{exx}}%
+    \def\theinexecnt{\arabic{exx}}%
+  }%
+}
+
+%% ---------------------------------------------------------------
+%% Core display line
+%% ---------------------------------------------------------------
+
+\newlength{\inexe@savedleft}
+\newlength{\inexe@labelwidth}
+\newlength{\inexe@itemsep}
+\setlength{\inexe@itemsep}{3\p@ plus2\p@}
+
+\long\def\inexe@line#1#2{%
+  \if@inexe@firstline
+    \@inexe@firstlinefalse
+  \else
+    \par
+  \fi
+  \noindent
+  \hspace*{-\inexe@savedleft}%
+  \noindent
+  \hbox to \dimexpr\linewidth+\inexe@savedleft\relax{%
+    \hbox to \inexe@labelwidth{%
+      \hfil
+      \ifx\relax#1\relax
+      \else
+        \inexe@fmt{#1}%
+      \fi
+    }%
+    \hspace{\inexelabelsep}%
+    \parbox[t]{\dimexpr
+        \linewidth + \inexe@savedleft
+        - \inexe@labelwidth
+        - \inexelabelsep
+      \relax}{#2}%
+    \hss
+  }%
+  \par
+  \vspace{\inexe@itemsep}%
+}
+
+%% ---------------------------------------------------------------
+%% Item commands
+%% ---------------------------------------------------------------
+
+\long\def\inexe@ex#1{%
+  \inexe@stepcounter
+  \inexe@line{\inexe@thecounter}{#1}%
+}
+
+\long\def\inexe@exj[#1]#2{%
+  \inexe@stepcounter
+  \inexe@line{\inexe@thecounter}{#1\hspace{.5ex}#2}%
+}
+
+\long\def\inexe@sn#1{%
+  \inexe@line{\relax}{#1}%
+}
+
+\long\def\inexe@snj[#1]#2{%
+  \inexe@line{\relax}{#1\hspace{.5ex}#2}%
+}
+
+\long\def\inexe@exi#1#2{%
+  \inexe@line{#1}{#2}%
+}
+
+%% ---------------------------------------------------------------
+%% inxlist — inline sub-example list for use inside \ex{...}
+%%
+%% Lives inside the \parbox of \ex{...}. Uses \halign so \xi takes
+%% unbraced content (everything to the next \xi/\xij/\xisn/\xisnj
+%% or \end{inxlist}), matching gb4e's xlist feel.
+%% Labels are always a. b. c. style (gb4e xlist default).
+%%
+%% Usage:
+%%   \ex{Consider the following:
+%%     \begin{inxlist}
+%%       \xi First sub-example.
+%%       \xi Second sub-example.
+%%       \xij[*] Bad sub-example.
+%%       \xisn Unnumbered sub-example.
+%%     \end{inxlist}}
+%%
+%% Commands inside inxlist:
+%%   \xi          lettered sub-example (unbraced)
+%%   \xij[jdg]    with judgement mark
+%%   \xisn        unnumbered sub-example
+%%   \xisnj[jdg]  unnumbered with judgement
+%% ---------------------------------------------------------------
+
+\@definecounter{inxcnt}
+% \p@inxcnt: prefix for \ref — produces "3b" style cross-references.
+% Defined as the current inexe label (arabic) so sub-example labels
+% inherit the parent example number.
+\def\p@inxcnt{\theinexecnt}
+% \theinexecnt: the current top-level example number, used as prefix.
+% Points to exx if gb4e loaded, else inexecnt. Defined at \begin{document}
+% (after gb4e has loaded) via \AtBeginDocument below — placeholder for now.
+\def\theinexecnt{\arabic{inexecnt}}
+% Save the standard \@item before any package (e.g. paralist) redefines it.
+\let\@orignalitem\@item
+
+\newlength{\inxlist@labelwidth}
+\newlength{\inxlist@labelsep}
+\setlength{\inxlist@labelsep}{.75em}
+\newlength{\inxlist@itemsep}
+\setlength{\inxlist@itemsep}{1.5\p@ plus\p@}
+
+% \theinxcnt: formats the sub-example counter value (letter/roman/etc.)
+% Set locally by \inxlist@open to match the current list style.
+\def\theinxcnt{\alph{inxcnt}}
+%% Shared setup for all inxlist variants.
+%% #1 = counter format command, e.g. \alph, \roman, \arabic, \Alph, \Roman
+%% #2 = sample string for label width, e.g. "m." or "iii." or "99."
+\def\inxlist@open#1#2{%
+  \setcounter{inxcnt}{0}%
+  \def\inxlist@counterfmt{#1}%
+  % Set \theinxcnt so \refstepcounter{inxcnt} records the right label.
+  \def\theinxcnt{#1{inxcnt}}%
+  \settowidth{\inxlist@labelwidth}{#2}%
+  \edef\inxlist@savedlistdepth{\the\@listdepth}%
+  \edef\inxlist@saveditemdepth{\the\@itemdepth}%
+  \let\@item\@orignalitem
+  \begin{list}{}{%
+    \labelwidth=\inxlist@labelwidth
+    \labelsep=\inxlist@labelsep
+    \leftmargin=\inxlist@labelwidth
+    \advance\leftmargin\inxlist@labelsep
+    \itemindent\z@
+    \listparindent\z@
+    \topsep=\inxlist@itemsep
+    \itemsep=\inxlist@itemsep
+    \parsep\z@
+  }%
+  \def\xi{%
+    \refstepcounter{inxcnt}%
+    \item[\inxlist@counterfmt{inxcnt}.]%
+  }%
+  \def\xij[##1]{%
+    \refstepcounter{inxcnt}%
+    \item[\inxlist@counterfmt{inxcnt}.]##1\hspace{.5ex}%
+  }%
+  \def\xisn{\item[]}%
+  \def\xisnj[##1]{\item[]##1\hspace{.5ex}}%
+}
+
+\def\inxlist@close{%
+  \end{list}%
+  \@listdepth=\inxlist@savedlistdepth\relax
+  \@itemdepth=\inxlist@saveditemdepth\relax
+  \ignorespacesafterend
+}
+
+% inxlist  — alphabetic:  a. b. c.   (mirrors gb4e's xlist / xlista)
+\newenvironment{inxlist}
+  {\inxlist@open{\alph}{m.}}
+  {\inxlist@close}
+
+% inxlisti — roman:       i. ii. iii.  (mirrors gb4e's xlisti)
+\newenvironment{inxlisti}
+  {\inxlist@open{\roman}{iii.}}
+  {\inxlist@close}
+
+% inxlistn — arabic:      1. 2. 3.   (mirrors gb4e's xlistn)
+\newenvironment{inxlistn}
+  {\inxlist@open{\arabic}{9.}}
+  {\inxlist@close}
+
+% inxlistA — Alphabetic:  A. B. C.   (mirrors gb4e's xlistA)
+\newenvironment{inxlistA}
+  {\inxlist@open{\Alph}{M.}}
+  {\inxlist@close}
+
+% inxlistI — Roman:       I. II. III.  (mirrors gb4e's xlistI)
+\newenvironment{inxlistI}
+  {\inxlist@open{\Roman}{III.}}
+  {\inxlist@close}
+
+%% ---------------------------------------------------------------
+%% inexe environment
+%% ---------------------------------------------------------------
+
+\newif\if@inexe@firstline
+
+\newenvironment{inexe}{%
+  \inexe@savedleft=\@totalleftmargin
+  \advance\inexe@savedleft\leftskip
+  \ifnum\value{inexecnt}<9
+    \settowidth{\inexe@labelwidth}{\inexe@fmt{9}}%
+  \else\ifnum\value{inexecnt}<99
+    \settowidth{\inexe@labelwidth}{\inexe@fmt{99}}%
+  \else
+    \settowidth{\inexe@labelwidth}{\inexe@fmt{999}}%
+  \fi\fi
+  \@inexe@firstlinetrue
+  \leavevmode\newline\noindent
+  \let\ex\inexe@ex
+  \let\exj\inexe@exj
+  \let\sn\inexe@sn
+  \let\snj\inexe@snj
+  \let\exi\inexe@exi
+}{%
+  \vspace{-\inexe@itemsep}%
+  \vspace{\belowdisplayskip}%
+  \ignorespacesafterend
+}
+
+\makeatother
+
+\endinput
