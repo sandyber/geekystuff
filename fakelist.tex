@@ -1,0 +1,184 @@
+%% fakelist.tex
+%% Solving the issue of exe environments (gb4e) in inline lists.
+%%
+%% A fake enumerate-like environment that is just a paragraph.
+%% No lists, no spacing changes, no horizontal-mode tricks.
+%% exe, xlist, inexe etc. all work inside it exactly as in
+%% normal paragraph text, because it IS normal paragraph text.
+%%
+%% Load with \input{fakelist} in your preamble.
+%%
+%% Usage:
+%%   \begin{fakenum}[(I)]
+%%     \item Blah blah
+%%     \begin{exe} \ex foo \end{exe}
+%%     blah.
+%%     \item Consider:
+%%     \begin{exe}
+%%       \ex This is a numbered example.
+%%     \end{exe}
+%%   \end{fakenum}
+%%
+%% Italic Labels:
+%%   To italicize the label, include \itlabelfake in the optional argument:
+%%   \begin{fakenum}[\itlabelfake (a)]
+%%     \item This will be italicized.
+%%   \end{fakenum}
+%%
+%% Label format (same conventions as enumerate package):
+%%   (I)  uppercase roman    (i)  lowercase roman  (default)
+%%   (A)  uppercase alpha    (a)  lowercase alpha
+%%   (1)  arabic
+%%
+%% \label / \ref work on items: place \label after \item.
+
+%% ---------------------------------------------------------------
+%% Guard against double-loading
+%% ---------------------------------------------------------------
+\expandafter\ifx\csname fakelist@loaded\endcsname\relax
+\expandafter\def\csname fakelist@loaded\endcsname{}
+\else\expandafter\endinput\fi
+\def\itlabelfake{}
+
+\makeatletter
+
+%% ---------------------------------------------------------------
+%% Counter
+%% ---------------------------------------------------------------
+
+\newcounter{fakenum}
+
+%% ---------------------------------------------------------------
+%% Label format parser
+%%
+%% Finds the counter-style letter (A/a/I/i/1) in the spec,
+%% sets \fl@fmt accordingly, and splits spec into \fl@pre/\fl@post.
+%% Uses \@tfor to walk tokens — no recursion, no \if nesting issues.
+%% ---------------------------------------------------------------
+
+\def\fl@pre{}
+\def\fl@fmt{\roman{fakenum}}
+\def\fl@post{}
+\newif\if@fl@found
+
+\def\fl@parse#1{%
+  \def\fl@pre{}%
+  \def\fl@post{}%
+  \def\fl@fmt{\roman{fakenum}}%
+  \@fl@foundfalse
+  \@tfor\fl@tok:=#1\do{%
+    \if@fl@found
+      \edef\fl@post{\fl@post\fl@tok}%
+    \else
+      \ifx\fl@tok\fl@A \def\fl@fmt{\Alph{fakenum}}\@fl@foundtrue\else
+      \ifx\fl@tok\fl@a \def\fl@fmt{\alph{fakenum}}\@fl@foundtrue\else
+      \ifx\fl@tok\fl@I \def\fl@fmt{\Roman{fakenum}}\@fl@foundtrue\else
+      \ifx\fl@tok\fl@i \def\fl@fmt{\roman{fakenum}}\@fl@foundtrue\else
+      \ifx\fl@tok\fl@one \def\fl@fmt{\arabic{fakenum}}\@fl@foundtrue\else
+        \edef\fl@pre{\fl@pre\fl@tok}%
+      \fi\fi\fi\fi\fi
+    \fi
+  }%
+}
+
+\def\fl@A{A}\def\fl@a{a}\def\fl@I{I}\def\fl@i{i}\def\fl@one{1}
+
+%% ---------------------------------------------------------------
+%% \item replacement
+%% ---------------------------------------------------------------
+
+\def\fakenumfont#1{#1}
+\def\fl@item{%
+  \ifnum\@listdepth>\z@
+    % Inside a real list (e.g. exe): use the real \item
+    \fl@saveditem
+  \else
+    % Top level in fakenum: print our fake label
+    \refstepcounter{fakenum}%
+    \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
+    \fl@pre\fakenumfont{\fl@fmt}\fl@post~%\enskip%\hspace{.5em}%
+  \fi
+}
+\def\fl@item{%
+  \ifnum\@listdepth>\z@
+    \fl@saveditem
+  \else
+    \refstepcounter{fakenum}%
+    \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
+    % This line ensures the font command wraps the formatted counter
+    \fl@pre\fakenumfont{\fl@fmt}\fl@post~% 
+  \fi
+}
+\def\fl@item{%
+  \ifnum\@listdepth>\z@
+    \fl@saveditem
+  \else
+    \refstepcounter{fakenum}%
+    \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
+    % This line ensures the font command wraps the formatted counter
+    \fl@pre\fakenumfont{\fl@fmt}\fl@post~% 
+  \fi
+}
+%% ---------------------------------------------------------------
+%% fakenum environment
+%% ---------------------------------------------------------------
+
+% \newenvironment{fakenum}[1][(i)]{%
+%   \setcounter{fakenum}{0}%
+%   \fl@parse{#1}%
+%   \let\fl@saveditem\item
+%   \let\item\fl@item
+%   \ignorespaces
+% }{%
+%   \let\item\fl@saveditem
+% }
+% \renewenvironment{fakenum}[1][(i)]{%
+%   \setcounter{fakenum}{0}%
+%   \def\fakenumfont##1{##1}% Reset font to default for each environment
+%   #1% Execute commands like \itlabelfake if present in the argument
+%   \fl@parse{#1}% Parse the string for labels
+%   \let\fl@saveditem\item
+%   \let\item\fl@item
+%   \ignorespaces
+% }{%
+%   \let\item\fl@item
+% }
+% \renewenvironment{fakenum}[1][(i)]{%
+%   \setcounter{fakenum}{0}%
+%   \def\fakenumfont##1{##1}% Reset to default (upright) 
+%   #1% Execute \itlabelfake if it's in the brackets
+%   \fl@parse{#1}% Run the parser [cite: 9]
+%   \let\fl@saveditem\item
+%   \let\item\fl@item
+%   \ignorespaces
+% }{%
+%   \let\item\fl@saveditem
+% }
+
+\newenvironment{fakenum}[1][(i)]{%
+  \setcounter{fakenum}{0}%
+  % 1. Default: Upright font
+  \def\fakenumfont##1{##1}% 
+  % 2. Check if \itlabelfake was typed in the brackets
+  \tokenize@check{#1}{\itlabelfake}{\def\fakenumfont##1{(\textit{##1})}}%
+  % 3. Run the original parser 
+  \fl@parse{#1}% 
+  \let\fl@saveditem\item
+  \let\item\fl@item
+  \ignorespaces
+}{%
+  \let\item\fl@saveditem
+}
+
+% Helper to check for the command without expanding it
+\def\tokenize@check#1#2#3{%
+  \def\temp@a{#1}\def\temp@b{#2}%
+  \ifx\temp@a\temp@b #3\fi % Simple check if only \itlabelfake is present
+  % Or more simply, just check if the argument contains it:
+  \inner@check#1\itlabelfake\@@@{#3}%
+}
+\def\inner@check#1\itlabelfake#2\@@@#3{\ifx\relax#2\relax\else#3\fi}
+
+\makeatother
+
+\endinput

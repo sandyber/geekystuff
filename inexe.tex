@@ -1,5 +1,6 @@
 %% inexe.tex
 %% A display-math-style linguistic example environment.
+%% Provides gb4e-like environments for use in inline lists.
 %% Load with \input{inexe} in your preamble.
 %%
 %% Configuration (set these BEFORE \input{inexe}):
@@ -32,6 +33,10 @@
 %%   inxlistn  1. 2. 3.      (mirrors xlistn)
 %%   inxlistA  A. B. C.      (mirrors xlistA)
 %%   inxlistI  I. II. III.   (mirrors xlistI)
+%%
+%% Helper macro: \displayex
+%%   Use it to wrap an inexe environment inside inline lists 
+%%   (e.g., inparaenum) to maintain proper display-math spacing.
 
 %% ---------------------------------------------------------------
 %% Guard against double-loading
@@ -301,5 +306,17 @@
 }
 
 \makeatother
+
+%% ---------------------------------------------------------------
+%% Helper macro: \displayex
+%% ---------------------------------------------------------------
+
+\newcommand{\displayex}[1]{%
+  \par\addvspace{\medskipamount}%
+  \noindent\begin{minipage}{\linewidth}
+    #1
+  \end{minipage}%
+  \par\addvspace{\medskipamount}%
+}
 
 \endinput
