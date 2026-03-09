@@ -22,19 +22,62 @@
 
 (use-package vertico
   :ensure t
+  :config
+  ;; (defun ysb/vertico-insert-or-dired ()
+  ;; "If candidate is a directory, insert it; otherwise exit with it."
+  ;; (interactive)
+  ;; (let ((candidate (vertico--candidate)))
+  ;;   (if (and (file-directory-p candidate))
+  ;;       (vertico-insert)
+  ;;     (vertico-exit))))
+  ;; (advice-add 'citar--setup-multiple-keymap :override
+  ;;  (lambda ()
+  ;;   (let ((keymap (make-composed-keymap nil (current-local-map)))
+  ;;         (kbdselect (kbd (car citar--multiple-setup)))
+  ;;         (kbdexit   (kbd (cdr citar--multiple-setup))))
+  ;;     (define-key keymap kbdselect #'vertico-exit)
+  ;;     (define-key keymap kbdexit #'citar--multiple-exit)
+  ;;     (use-local-map keymap))))
+;;  
+;; Dealing with a clash between RET in vertico and TAB+RET in citar multiple candidate selection
+(defvar ysb/citar-selecting-multiple nil
+  "Non-nil when inside citar--select-multiple.")
+
+(advice-add 'citar--select-multiple :around
+  (lambda (orig &rest args)
+    (let ((ysb/citar-selecting-multiple t))
+      (apply orig args))))
+
+(defun ysb/vertico-insert-or-dired ()
+  "If candidate is a directory, insert it; otherwise exit with it."
+  (interactive)
+  (if ysb/citar-selecting-multiple
+      (citar--multiple-exit)
+    (let ((candidate (vertico--candidate)))
+      (if (file-directory-p candidate)
+          (vertico-insert)
+        (vertico-exit)))))
+(advice-add 'citar--setup-multiple-keymap :override
+  (lambda ()
+    (let ((keymap (make-composed-keymap nil (current-local-map)))
+          (kbdselect (kbd (car citar--multiple-setup)))
+          (kbdexit   (kbd (cdr citar--multiple-setup))))
+      (define-key keymap kbdselect #'vertico-exit)
+      (define-key keymap kbdexit #'citar--multiple-exit)
+      (use-local-map keymap))))
   :custom
   (vertico-count 10)  ;; limit to a fixed size
-;  (vertico-scroll-margin 0) ;; Different scroll margin
-  ;; (vertico-count 20) ;; Show more candidates
   (vertico-resize nil) ;; Do not grow or shrink dynamically the Vertico minibuffer
+  (vertico-cycle t)    ;after reaching the bottom of the list go to the top
   :bind (:map vertico-map
-    ;; Use page-up/down to scroll vertico buffer, like ivy does by default.
-    ("<prior>" . 'vertico-scroll-down)
-    ("<next>"  . 'vertico-scroll-up))
+    ("RET" . ysb/vertico-insert-or-dired)
+    ("<prior>" . vertico-scroll-down) ;; Use page-up/down to scroll vertico buffer, like ivy does by default.
+    ("<next>"  . vertico-scroll-up))
   :init
   ;; Activate vertico
   (vertico-mode)
-  (savehist-mode))
+  (savehist-mode)
+  )
 
 ;; Convenient path selection
 (use-package vertico-directory
@@ -73,7 +116,8 @@
   :ensure t
   :custom
   ;; Activate orderless completion
-  (completion-styles '(orderless basic)) 
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
   ;; Enable partial completion for file wildcard support
   (completion-category-overrides '((file (styles partial-completion))))
   )
@@ -92,6 +136,22 @@
   (consult-customize ;https://github.com/minad/consult#live-previews
    consult-line :preview-key 'any
    )
+(add-hook 'emacs-lisp-mode-hook
+  (lambda ()
+    (add-to-list 'imenu-generic-expression
+                 '("Use-package" "^(use-package \\([^[:space:]\n]+\\)" 1) t)))
+
+(with-eval-after-load 'consult-imenu
+  (setq consult-imenu-config
+        '((emacs-lisp-mode
+           :toplevel "Functions"
+           :types ((?f "Functions"    font-lock-function-name-face)
+                   (?m "Macros"       font-lock-function-name-face)
+                   (?p "Packages"     font-lock-constant-face)
+                   (?t "Types"        font-lock-type-face)
+                   (?v "Variables"    font-lock-variable-name-face)
+                   (?u "Use-package"  font-lock-keyword-face))))))
+;;------------------
   (defun consult-switch-buffer-kill ()
     "Kill buffer and remove it from the current completion session."
     (interactive)
@@ -108,6 +168,15 @@
       ;; Now force the redraw
       (vertico--exhibit))))
 )
+
+;; (use-package consult-imenu
+;;   :ensure nil
+;;   :after consult
+;;   :config
+;;   (add-to-list 'consult-imenu-config
+;;                '(emacs-lisp-mode :types
+;;                                  ((?u "use-package" font-lock-keyword-face)))))
+
 (use-package embark
   :ensure t
   :bind
@@ -183,6 +252,7 @@
   ;  (add-hook 'after-init-hook 'global-company-mode)
   (setq company-backends '((company-capf company-dabbrev-code) ; :with company-dabbrev-code
                            company-files
+;                           company-reftex-labels
                            company-dabbrev))
   ;; (add-hook 'emacs-lisp-mode-hook ;'prog-mode-hook
   ;;           (lambda ()
