@@ -89,15 +89,11 @@
 
 \def\fakenumfont#1{#1}
 \def\fl@item{%
-  \ifnum\@listdepth>\z@
-    % Inside a real list (e.g. exe): use the real \item
-    \fl@saveditem
-  \else
-    % Top level in fakenum: print our fake label
-    \refstepcounter{fakenum}%
-    \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
-    \fl@pre\fakenumfont{\fl@fmt}\fl@post~%
-  \fi
+  % fakenum always prints its own fake label, regardless of any
+  % surrounding list. It is paragraph text, not a list item.
+  \refstepcounter{fakenum}%
+  \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
+  \fl@pre\fakenumfont{\fl@fmt}\fl@post~%
 }
 
 %% ---------------------------------------------------------------
@@ -115,12 +111,15 @@
   % 4. Swap in our \item
   \let\fl@saveditem\item
   \let\item\fl@item
-  % 5. Patch \exi so that \sn (= \exi{}) suppresses the label bracket.
-  %    Non-empty \exi{label} is passed through unchanged.
+  % 5. Patch \exi so that \sn (= \exi{}) is a no-op inside fakenum.
+  %    Non-empty \exi{label} is passed through unchanged (in case the
+  %    user genuinely wants gb4e's label behaviour here).
   \let\fl@savedexi\exi
   \def\exi##1{%
-    \if\relax##1\relax
-      \fl@saveditem[]\@ifnextchar[{\@exj}{}%
+    \def\fl@tmp{##1}%
+    \ifx\fl@tmp\@empty
+      % swallow optional [foo] that \sn may produce, then do nothing
+      \@ifnextchar[{\@gobble}{}%
     \else
       \fl@savedexi{##1}%
     \fi
