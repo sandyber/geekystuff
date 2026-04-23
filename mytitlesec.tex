@@ -3,7 +3,7 @@
 \ifdefined\sectionending\else
   \newcommand{\sectionending}[1]{#1.}
   \fi
-\def\subparseparator{~}
+\def\subparseparator{\space} %https://tex.stackexchange.com/a/74354/76960
 \ifdefined\subparending\else
   \newcommand{\subparending}[1]{#1.}
   \fi
@@ -70,13 +70,17 @@
 % emulating description....
 \ifdefined\subparagfont\else\let\subparagfont=\itshape\fi%
 \makeatletter
-\ifttl@explicit %option explicit is passed to titlesec...
+\@ifundefined{ifttl@explicit}{\iffalse}{\ifttl@explicit}%
+%\ifttl@explicit %option explicit is passed to titlesec...
   \titleformat{\subparagraph}[runin]
   {\normalfont\subparagfont}{\thesubparagraph}{.5em}{#1}[\subparending\normalfont\subparseparator\subparseparator]
 \else
   \titleformat{\subparagraph}[runin]
   {\normalfont\subparagfont}{\thesubparagraph}{.5em}{}[\subparending\normalfont\subparseparator\subparseparator]
 \fi  
+\@ifundefined{subparindent}{\newlength{\subparindent}}{}
 \makeatother
+%\newlength{\subparindent}
+\setlength{\subparindent}{0pt} % Default is no indent
 \titlespacing{\subparagraph}
-{0pt}{1.5ex plus .1ex minus .2ex}{0pt}
+{\subparindent}{1.5ex plus .1ex minus .2ex}{0pt}

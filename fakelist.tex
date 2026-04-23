@@ -47,6 +47,7 @@
 %% ---------------------------------------------------------------
 
 \newcounter{fakenum}
+\newcounter{fakenum@inst}
 
 %% ---------------------------------------------------------------
 %% Label format parser
@@ -59,7 +60,8 @@
 \def\fl@pre{}
 \def\fl@fmt{\roman{fakenum}}
 \def\fl@post{}
-\newif\if@fl@found
+\csname newif\expandafter\endcsname\csname if@fl@found\endcsname
+%\newif\if@fl@found
 
 \def\fl@parse#1{%
   \def\fl@pre{}%
@@ -91,8 +93,19 @@
 \def\fl@item{%
   % fakenum always prints its own fake label, regardless of any
   % surrounding list. It is paragraph text, not a list item.
-  \refstepcounter{fakenum}%
+  %
+  % We deliberately do NOT call \refstepcounter{fakenum}, because that
+  % would register a hyperref anchor named "fakenum.N" -- and since the
+  % counter resets on every fakenum environment, the second instance in
+  % the document collides with the first. Instead we step the counter
+  % manually and install our own \@currentHref built from a per-instance
+  % serial number, so every anchor is unique across the document.
+  \stepcounter{fakenum}%
   \protected@edef\@currentlabel{\fl@pre\fl@fmt\fl@post}%
+  \edef\@currentHref{fakenum.\the\c@fakenum@inst.\the\c@fakenum}%
+  \ifcsname Hy@raisedlink\endcsname
+    \Hy@raisedlink{\hyper@anchorstart{\@currentHref}\hyper@anchorend}%
+  \fi
   \fl@pre\fakenumfont{\fl@fmt}\fl@post~%
 }
 
@@ -102,6 +115,7 @@
 
 \newenvironment{fakenum}[1][(i)]{%
   \setcounter{fakenum}{0}%
+  \stepcounter{fakenum@inst}%
   % 1. Default: upright font
   \def\fakenumfont##1{##1}%
   % 2. Check if \itlabelfake was typed in the brackets
