@@ -25,11 +25,10 @@ def run_cmd(cmd_list):
 
 def clean_page(page_num, input_path, output_dir, threshold_val, dpi_val,
                gs_bin, magick_bin):
-    """Extract one page, threshold it to bilevel TIFF. No OCR here — ocrmypdf handles that.
-    TIFF (Group 4) is used instead of PNG because some prebuilt jbig2enc binaries lack libpng."""
+    """Extract one page, threshold it to bilevel PNG. No OCR here — ocrmypdf handles that."""
     padded = f"{page_num:04d}"
     raw_png = os.path.join(output_dir, f"_raw_{padded}.png")
-    clean_tif = os.path.join(output_dir, f"page_{padded}.tif")
+    clean_png = os.path.join(output_dir, f"page_{padded}.png")
 
     try:
         ok, err = run_cmd([
@@ -44,7 +43,7 @@ def clean_page(page_num, input_path, output_dir, threshold_val, dpi_val,
             magick_bin, raw_png,
             "-white-threshold", f"{threshold_val}%",
             "-colorspace", "gray", "-type", "bilevel",
-            "-compress", "Group4", clean_tif,
+            clean_png,
         ])
         if not ok:
             return page_num, False, f"magick failed: {err}"
@@ -64,7 +63,7 @@ def main():
         print("=" * 75)
         print("USAGE:")
         print(f"  python {script_name} <file.pdf> <pages> [threshold:XX] [dpi:NNN]")
-        print(f"                    [workers:N] [--preview] [--keep-tiffs]")
+        print(f"                    [workers:N] [--preview] [--keep-pngs]")
         print("\nEXAMPLES:")
         print(f"  python {script_name} Ethics.pdf 1-741")
         print(f"  python {script_name} Ethics.pdf 1-10 threshold:65")
@@ -112,7 +111,7 @@ def main():
     threshold_val = "40"
     dpi_val = "200"
     is_preview = "--preview" in sys.argv
-    keep_tiffs = "--keep-tiffs" in sys.argv
+    keep_pngs = "--keep-pngs" in sys.argv
     workers = max(1, (os.cpu_count() or 4))
 
     for arg in sys.argv[3:]:
@@ -138,9 +137,8 @@ def main():
 
         if not is_preview:
             print(f"Cleaning leftovers in /{output_dir}...")
-            for pattern in ("*.png", "*.tif"):
-                for f in glob.glob(os.path.join(output_dir, pattern)):
-                    os.remove(f)
+            for f in glob.glob(os.path.join(output_dir, "*.png")):
+                os.remove(f)
 
         page_list = []
         for part in raw_pages.split(','):
@@ -205,16 +203,16 @@ def main():
             print(f"\n[!] {len(failed)} page(s) failed: {failed}")
             print("    Continuing with the pages that succeeded.")
 
-        page_files = sorted(glob.glob(os.path.join(output_dir, "page_*.tif")))
-        if not page_files:
+        png_files = sorted(glob.glob(os.path.join(output_dir, "page_*.png")))
+        if not png_files:
             print("[!] No cleaned pages produced. Aborting.")
             return
 
-        # --- Step 2: bundle TIFFs into image-only PDF ---
-        print(f"\n--- STEP 2/3: bundling {len(page_files)} pages into image PDF ---")
+        # --- Step 2: bundle PNGs into image-only PDF ---
+        print(f"\n--- STEP 2/3: bundling {len(png_files)} pages into image PDF ---")
         import img2pdf
         with open(image_pdf, "wb") as f:
-            f.write(img2pdf.convert(page_files))
+            f.write(img2pdf.convert(png_files))
         bundle_size = os.path.getsize(image_pdf) / 1024 / 1024
         print(f"  -> {image_pdf} ({bundle_size:.1f} MB)")
 
@@ -230,9 +228,9 @@ def main():
             final_size = os.path.getsize(final_path) / 1024 / 1024
             print(f"\nDone! Saved to: {final_path} ({final_size:.1f} MB)")
             os.remove(image_pdf)
-            if not keep_tiffs:
-                for f in page_files:
-                    try: os.remove(f)
+            if not keep_pngs:
+                for png in png_files:
+                    try: os.remove(png)
                     except OSError: pass
         else:
             print(f"[!] ocrmypdf failed. Image PDF kept at: {image_pdf}")
@@ -245,13 +243,10 @@ def main():
     except KeyboardInterrupt:
         print(f"\n\n[!] STOPPED. Cleaned PNGs remain in /{output_dir}")
     finally:
-        # Don't delete preview files — viewer launches asynchronously on Windows
-        # and may still be loading when this runs.
-        if not is_preview:
-            for f in ["temp_page.png", "temp_cleaned.png"]:
-                if os.path.exists(f):
-                    try: os.remove(f)
-                    except OSError: pass
+        for f in ["temp_page.png", "temp_cleaned.png"]:
+            if os.path.exists(f):
+                try: os.remove(f)
+                except OSError: pass
 
 if __name__ == "__main__":
     main()
