@@ -1,2 +1,2 @@
 # geekystuff
-Bits of coding, esp. Emacs and LaTeX. Uncleaned, unoptimised, yet working.
+Bits of coding, mostly Emacs, LaTeX, and python scripts to manipulate PDFs. Often uncleaned, unoptimised, yet working.
