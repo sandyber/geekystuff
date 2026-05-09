@@ -71,7 +71,7 @@ def main():
         print(f"  python {script_name} Ethics.pdf 5 --preview")
         print(f"  python {script_name} Ethics.pdf 1-741 workers:6")
         print("\nDEFAULTS:")
-        print("  threshold:40    dpi:200    workers:auto (logical CPU count)")
+        print("  threshold:40    dpi:300    workers:auto (logical CPU count)")
         print("\nPIPELINE:")
         print("  1. Ghostscript + ImageMagick (parallel) -> cleaned bilevel PNGs")
         print("  2. img2pdf -> single image-only PDF (lossless)")
@@ -110,7 +110,7 @@ def main():
 
     raw_pages = sys.argv[2]
     threshold_val = "40"
-    dpi_val = "200"
+    dpi_val = "300"
     is_preview = "--preview" in sys.argv
     keep_tiffs = "--keep-tiffs" in sys.argv
     workers = max(1, (os.cpu_count() or 4))
