@@ -55,80 +55,8 @@ def clean_page(page_num, input_path, output_dir, threshold_val, dpi_val,
             try: os.remove(raw_png)
             except OSError: pass
 
-def install_python_deps():
-    """Pip-install the Python packages this script needs (img2pdf, ocrmypdf).
-
-    System binaries (Ghostscript, ImageMagick, jbig2enc) are NOT pip-installable
-    and must be installed via the OS package manager / installer.
-    """
-    packages = ["img2pdf", "ocrmypdf"]
-
-    # Skip anything already importable / on PATH so reruns are cheap.
-    needed = []
-    for pkg in packages:
-        if pkg == "img2pdf":
-            try:
-                import img2pdf  # noqa: F401
-                print(f"  [skip] {pkg} already installed")
-            except ImportError:
-                needed.append(pkg)
-        elif pkg == "ocrmypdf":
-            if shutil.which("ocrmypdf"):
-                print(f"  [skip] {pkg} already installed")
-            else:
-                needed.append(pkg)
-
-    if not needed:
-        print("All Python dependencies already present.")
-        _warn_about_system_binaries()
-        return
-
-    print(f"--- Installing Python packages: {', '.join(needed)} ---")
-    base_cmd = [sys.executable, "-m", "pip", "install", "--upgrade"]
-    ok, err = run_cmd(base_cmd + needed)
-    if not ok:
-        # Common case: system-managed Python (PEP 668). Retry with --user.
-        print("  [!] First install attempt failed; retrying with --user ...")
-        if err.strip():
-            print(f"      reason: {err.strip().splitlines()[-1][:200]}")
-        ok, err = run_cmd(base_cmd + ["--user"] + needed)
-
-    if ok:
-        print("  -> Python packages installed.")
-    else:
-        print("  [!] pip install failed. Stderr:")
-        print(err)
-        sys.exit(1)
-
-    _warn_about_system_binaries()
-
-
-def _warn_about_system_binaries():
-    """Remind the user about the non-pip dependencies."""
-    missing_sys = []
-    if not find_binary("gswin64c", "gs"):
-        missing_sys.append("Ghostscript")
-    if not find_binary("magick"):
-        missing_sys.append("ImageMagick")
-    if not find_binary("jbig2"):
-        missing_sys.append("jbig2enc (optional but needed for real compression)")
-    if missing_sys:
-        print("\n[note] These system binaries are NOT pip-installable and are still missing:")
-        for m in missing_sys:
-            print(f"        - {m}")
-        print("       Install them via your OS package manager / vendor installer.")
-
-
 def main():
     script_name = os.path.basename(sys.argv[0])
-
-    # --install-deps can be run on its own (no PDF needed) to set up Python packages.
-    if "--install-deps" in sys.argv:
-        install_python_deps()
-        # If the user *only* asked to install, exit here. Otherwise fall through
-        # and continue with the normal run using the freshly installed packages.
-        if len(sys.argv) < 3:
-            return
 
     if len(sys.argv) < 3 or "--help" in sys.argv or "-h" in sys.argv:
         print("\n" + "=" * 75)
@@ -137,16 +65,13 @@ def main():
         print("USAGE:")
         print(f"  python {script_name} <file.pdf> <pages> [threshold:XX] [dpi:NNN]")
         print(f"                    [workers:N] [--preview] [--keep-tiffs]")
-        print(f"  python {script_name} --install-deps")
         print("\nEXAMPLES:")
         print(f"  python {script_name} Ethics.pdf 1-741")
         print(f"  python {script_name} Ethics.pdf 1-10 threshold:65")
         print(f"  python {script_name} Ethics.pdf 5 --preview")
         print(f"  python {script_name} Ethics.pdf 1-741 workers:6")
-        print(f"  python {script_name} --install-deps             (set up python deps)")
-        print(f"  python {script_name} Ethics.pdf 1-10 --install-deps  (install + run)")
         print("\nDEFAULTS:")
-        print("  threshold:40    dpi:300    workers:auto (logical CPU count)")
+        print("  threshold:40    dpi:200    workers:auto (logical CPU count)")
         print("\nPIPELINE:")
         print("  1. Ghostscript + ImageMagick (parallel) -> cleaned bilevel PNGs")
         print("  2. img2pdf -> single image-only PDF (lossless)")
@@ -185,7 +110,7 @@ def main():
 
     raw_pages = sys.argv[2]
     threshold_val = "40"
-    dpi_val = "300"
+    dpi_val = "200"
     is_preview = "--preview" in sys.argv
     keep_tiffs = "--keep-tiffs" in sys.argv
     workers = max(1, (os.cpu_count() or 4))
