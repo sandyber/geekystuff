@@ -263,21 +263,34 @@ def main():
         print("       PDF BACKGROUND REMOVER (clean + OCR + JBIG2 + bookmarks)")
         print("=" * 75)
         print("USAGE:")
-        print(f"  python {script_name} <file.pdf> <pages> [threshold:XX] [dpi:NNN]")
-        print(f"                    [workers:N] [--preview] [--keep-tiffs]")
+        print(f"  python {script_name} <file.pdf> <pages> [--threshold N] [--dpi N]")
+        print(f"                    [--workers N] [--preview] [--keep-tiffs]")
         print(f"                    [--no-bookmarks]")
         print(f"  python {script_name} --install-deps")
         print("\nEXAMPLES:")
         print(f"  python {script_name} Ethics.pdf 1-741")
-        print(f"  python {script_name} Ethics.pdf 1-10 threshold:65")
+        print(f"  python {script_name} Ethics.pdf 1-10 --threshold 65")
+        print(f"  python {script_name} Ethics.pdf 1-10 --dpi 400")
+        print(f"  python {script_name} Ethics.pdf 1-10 --threshold 65 --dpi 400")
         print(f"  python {script_name} Ethics.pdf 5 --preview")
-        print(f"  python {script_name} Ethics.pdf 1-741 workers:6")
+        print(f"  python {script_name} Ethics.pdf 1-741 --workers 6")
         print(f"  python {script_name} Ethics.pdf 1-741 --no-bookmarks")
         print(f"  python {script_name} --install-deps             (set up python deps)")
         print(f"  python {script_name} Ethics.pdf 1-10 --install-deps  (install + run)")
+        print("\nFLAGS:")
+        print("  --threshold N   white-threshold percent for ImageMagick (default 40)")
+        print("  --dpi N         render resolution for Ghostscript (default 300)")
+        print("  --workers N     parallel worker count (default: logical CPU count)")
+        print("  --preview       render only the first page of <pages> for tuning")
+        print("  --keep-tiffs    keep intermediate page TIFFs after success")
+        print("  --no-bookmarks  skip copying the source PDF's bookmark outline")
+        print("  --install-deps  install required Python packages, then continue")
         print("\nDEFAULTS:")
-        print("  threshold:40    dpi:300    workers:auto (logical CPU count)")
+        print("  --threshold 40    --dpi 300    --workers auto (logical CPU count)")
         print("  bookmarks: copied from source by default; --no-bookmarks to skip.")
+        print("\nNOTE:")
+        print("  The old colon form (threshold:40, dpi:300, workers:6) still works")
+        print("  for now but is deprecated. Prefer --threshold 40 etc.")
         print("\nPIPELINE:")
         print("  1. Ghostscript + ImageMagick (parallel) -> cleaned bilevel PNGs")
         print("  2. img2pdf -> single image-only PDF (lossless)")
@@ -328,17 +341,87 @@ def main():
     do_bookmarks = "--no-bookmarks" not in sys.argv
     workers = max(1, (os.cpu_count() or 4))
 
-    for arg in sys.argv[3:]:
+    # Parse remaining args. Preferred form is `--flag value` (or `--flag=value`).
+    # The old colon form (`threshold:40`, `dpi:300`, `workers:6`) is still
+    # accepted as a deprecated alias so existing command lines don't break.
+    flagless = {"--preview", "--keep-tiffs", "--no-bookmarks", "--install-deps"}
+    rest = sys.argv[3:]
+    i = 0
+    while i < len(rest):
+        arg = rest[i]
+
+        # Flags without values: already handled above, just skip.
+        if arg in flagless:
+            i += 1
+            continue
+
+        # New style: --threshold 40 / --threshold=40, same for --dpi, --workers.
+        if arg.startswith("--"):
+            if "=" in arg:
+                key, _, value = arg.partition("=")
+            else:
+                key = arg
+                value = rest[i + 1] if i + 1 < len(rest) else None
+                # Consume the value token only if we actually used it.
+                consumed_value = False
+                if key in ("--threshold", "--dpi", "--workers") and value is not None:
+                    consumed_value = True
+
+            if key == "--threshold":
+                if value is None:
+                    print(f"[!] {key} needs a value (e.g. --threshold 40)")
+                    return
+                threshold_val = value
+            elif key == "--dpi":
+                if value is None:
+                    print(f"[!] {key} needs a value (e.g. --dpi 300)")
+                    return
+                dpi_val = value
+            elif key == "--workers":
+                if value is None:
+                    print(f"[!] {key} needs a value (e.g. --workers 6)")
+                    return
+                try:
+                    workers = max(1, int(value))
+                except ValueError:
+                    print(f"[!] --workers expects an integer, got: {value!r}")
+                    return
+            else:
+                print(f"[!] Unknown flag: {arg}")
+                return
+
+            # Step past key, and past the separate value token if we used one.
+            if "=" in arg:
+                i += 1
+            else:
+                i += 2 if consumed_value else 1
+            continue
+
+        # Old style (deprecated): threshold:40, dpi:300, workers:6.
         low = arg.lower()
-        if low.startswith("threshold"):
-            threshold_val = arg.split(":")[-1].split("=")[-1]
-        elif low.startswith("dpi"):
-            dpi_val = arg.split(":")[-1].split("=")[-1]
-        elif low.startswith("workers"):
-            try:
-                workers = max(1, int(arg.split(":")[-1].split("=")[-1]))
-            except ValueError:
-                pass
+        if low.startswith(("threshold:", "threshold=",
+                           "dpi:", "dpi=",
+                           "workers:", "workers=")):
+            # Split on either separator.
+            sep = ":" if ":" in arg else "="
+            key, _, value = arg.partition(sep)
+            key_l = key.lower()
+            print(f"[note] '{arg}' is deprecated; use --{key_l} {value} instead.")
+            if key_l == "threshold":
+                threshold_val = value
+            elif key_l == "dpi":
+                dpi_val = value
+            elif key_l == "workers":
+                try:
+                    workers = max(1, int(value))
+                except ValueError:
+                    print(f"[!] workers expects an integer, got: {value!r}")
+                    return
+            i += 1
+            continue
+
+        print(f"[!] Unrecognized argument: {arg}")
+        return
 
     input_dir = os.path.dirname(input_path) or "."
     base_name = os.path.splitext(os.path.basename(input_path))[0]
