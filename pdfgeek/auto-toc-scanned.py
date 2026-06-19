@@ -1,5 +1,9 @@
 """
-Build a flat (one-level) TOC for a scanned PDF from its printed Contents.
+Build a TOC for a scanned PDF from its printed Contents.
+
+By default the TOC is flat (one level). With --levels, ALL-CAPS title
+lines become level 1 and the rest become level 2, giving a two-level
+outline (chapters with nested subsections).
 
 Two ways to supply the entries:
 
@@ -23,11 +27,18 @@ Usage:
     python contents_toc.py book.pdf --scan 5 8 --offset 12
     python contents_toc.py book.pdf --scan 5 8 --offset 12 --dry-run
     python contents_toc.py book.pdf --from-file toc.txt --offset 12
+    python contents_toc.py book.pdf --from-file toc.txt --offset 12 --levels
 
 --dump (with --scan) writes the raw text of the Contents pages to
 <base>_toc_draft.txt, one line per non-empty source line, with junk
 leader lines removed. It does NOT parse or guess - you edit the draft
 into 'Title<2+ spaces>page' lines, then feed it back with --from-file.
+
+--levels makes a two-level TOC: a line whose title is entirely in capitals
+(no lowercase letters) is level 1, everything else is level 2. Useful when
+chapter headings are printed in caps and subsections in mixed case. If a
+level-2 line appears before any level-1 line, it is promoted to keep the
+outline valid.
 
 --dry-run prints what it parsed without writing the PDF, so you can
 check the offset and parsing before committing.
@@ -46,8 +57,20 @@ import pymupdf
 LINE_RE = re.compile(r"^(.*?)[\s.]{2,}(\d+)\s*$")
 
 
-def parse_lines(text):
-    """Turn raw TOC text into [(title, printed_page), ...]."""
+def is_all_caps(title):
+    """True if the title has at least one A-Z letter and no lowercase a-z.
+    Digits, spaces, and punctuation don't count either way, so headings like
+    'PRIMARY AND SECONDARY QUALITIES' or 'CHAPTER 3' match while a normal
+    subsection title with any lowercase letter does not."""
+    return bool(re.search(r"[A-Z]", title)) and not re.search(r"[a-z]", title)
+
+
+def parse_lines(text, two_levels=False):
+    """Turn raw TOC text into [(level, title, printed_page), ...].
+
+    With two_levels=False every entry is level 1.
+    With two_levels=True, ALL-CAPS title lines are level 1 and everything
+    else is level 2."""
     entries = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -63,7 +86,8 @@ def parse_lines(text):
         # keep the title readable. We leave the title mostly as-is on purpose.
         page = int(m.group(2))
         if title:
-            entries.append((title, page))
+            level = 1 if (not two_levels or is_all_caps(title)) else 2
+            entries.append((level, title, page))
     return entries
 
 
@@ -96,6 +120,20 @@ def extract_from_pages(doc, first, last):
     return "\n".join(chunks)
 
 
+def _normalize_levels(toc):
+    """PyMuPDF's set_toc requires each level to be at most prev_level + 1.
+    If a level-2 entry comes before any level-1 entry (e.g. the Contents
+    starts with a subsection), clamp it so the hierarchy stays valid.
+    toc is a list of [level, title, page]."""
+    out, prev = [], 0
+    for level, title, page in toc:
+        if level > prev + 1:
+            level = prev + 1
+        out.append([level, title, page])
+        prev = level
+    return out
+
+
 def read_file(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
@@ -117,6 +155,7 @@ def main():
         offset = int(argv[argv.index("--offset") + 1])
 
     dry_run = "--dry-run" in argv
+    two_levels = "--levels" in argv
 
     doc = pymupdf.open(pdf_path)
 
@@ -158,7 +197,7 @@ def main():
         doc.close()
         return
 
-    entries = parse_lines(raw)
+    entries = parse_lines(raw, two_levels=two_levels)
     if not entries:
         print("[!] Parsed 0 entries. Check the page range / file, or the "
               "TOC format may not match the expected 'Title .... page' shape.")
@@ -168,14 +207,17 @@ def main():
     n = doc.page_count
     toc = []
     print(f"--- parsed {len(entries)} entries (offset {offset:+d}) ---")
-    for title, printed in entries:
+    for level, title, printed in entries:
         pdf_page = printed + offset
         flag = ""
         if pdf_page < 1 or pdf_page > n:
             flag = "  <-- OUT OF RANGE, will skip"
-        print(f"  {printed:>4} -> {pdf_page:>4}  {title}{flag}")
+        indent = "  " * (level - 1)
+        print(f"  {printed:>4} -> {pdf_page:>4}  {indent}{title}{flag}")
         if 1 <= pdf_page <= n:
-            toc.append([1, title, pdf_page])
+            toc.append([level, title, pdf_page])
+
+    toc = _normalize_levels(toc)
 
     if dry_run:
         print("\n[dry-run] nothing written. Adjust --offset if the mapping "
