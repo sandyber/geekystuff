@@ -24,6 +24,17 @@ Flags:
                    content: lower N below the background's gray value.
     --dpi N        render resolution for detection (default 72). Raise
                    it if thin lines are missed.
+    --from-text    take the content box from the text layer (the union
+                   of the word boxes) instead of from dark pixels.
+                   Needs an OCR'd or born-digital PDF, and is the right
+                   choice for scans with black gutter stripes or dirty
+                   edges, which pixel detection reads as content and so
+                   refuses to crop. Pages with no text fall back to
+                   pixel detection.
+    --axis X       crop only one axis: 'x' keeps the full page height
+                   and trims left/right, 'y' keeps the full width and
+                   trims top/bottom, 'both' is the default. Use 'x' on
+                   a scan already tight at top and bottom.
     --pages SPEC   only crop these pages, e.g. 1-10,15 (default: all)
     --uniform      one crop box for the whole file: the union of all
                    per-page boxes. Keeps every page the same size.
@@ -97,6 +108,23 @@ def content_bbox(page, zoom, threshold):
     )
 
 
+def text_bbox(page):
+    """Bounding box of the page's text, in displayed page coordinates.
+
+    None if the page has no text layer. Immune to the black gutter
+    stripes and dirty edges that pixel detection reads as content.
+    """
+    words = page.get_text("words")
+    if not words:
+        return None
+    return pymupdf.Rect(
+        min(w[0] for w in words),
+        min(w[1] for w in words),
+        max(w[2] for w in words),
+        max(w[3] for w in words),
+    )
+
+
 def apply_crop(page, disp_rect):
     """Set the page's CropBox from a rect in displayed coordinates.
 
@@ -137,9 +165,11 @@ def main():
     uniform = "--uniform" in argv
     oddeven = "--oddeven" in argv
     dry_run = "--dry-run" in argv
+    from_text = "--from-text" in argv
+    axis = "both"
     out_path = None
 
-    flagless = {"--uniform", "--oddeven", "--dry-run"}
+    flagless = {"--uniform", "--oddeven", "--dry-run", "--from-text"}
     rest = argv[2:]
     i = 0
     while i < len(rest):
@@ -166,6 +196,11 @@ def main():
                 dpi = int(value)
             elif key == "--pages":
                 pages_spec = value
+            elif key == "--axis":
+                axis = value.lower()
+                if axis not in ("x", "y", "both"):
+                    print(f"[!] --axis must be x, y, or both, got {value}")
+                    sys.exit(1)
             elif key == "--out":
                 out_path = value
             else:
@@ -194,16 +229,31 @@ def main():
     zoom = dpi / 72.0
 
     # Pass 1: detect content boxes (in displayed coordinates, padded).
+    source = "text layer" if from_text else f"threshold {threshold}, dpi {dpi}"
     print(f"--- detecting content on {len(page_list)} page(s) "
-          f"(threshold {threshold}, dpi {dpi}, pad {pad:g}pt) ---")
+          f"({source}, pad {pad:g}pt, axis {axis}) ---")
     boxes = {}
+    fellback = []
     for p in page_list:
         page = doc[p - 1]
-        bb = content_bbox(page, zoom, threshold)
+        bb = text_bbox(page) if from_text else None
+        if from_text and bb is None:
+            fellback.append(p)
+        if bb is None:
+            bb = content_bbox(page, zoom, threshold)
         if bb is not None:
             bb = pymupdf.Rect(bb.x0 - pad, bb.y0 - pad, bb.x1 + pad, bb.y1 + pad)
+            if axis == "x":
+                bb.y0, bb.y1 = page.rect.y0, page.rect.y1
+            elif axis == "y":
+                bb.x0, bb.x1 = page.rect.x0, page.rect.x1
             bb = bb & page.rect
         boxes[p] = bb
+
+    if fellback:
+        more = " ..." if len(fellback) > 12 else ""
+        print(f"  no text layer on {len(fellback)} page(s), detected by "
+              f"pixel instead: {fellback[:12]}{more}")
 
     blanks = [p for p, bb in boxes.items() if bb is None]
     if len(blanks) == len(page_list):
