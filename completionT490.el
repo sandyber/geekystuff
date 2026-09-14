@@ -1,5 +1,4 @@
-(provide 'completionT490)
-
+;;; -*- lexical-binding: t; -*-
 (use-package avy
   :ensure t
   :pin melpa
@@ -13,32 +12,13 @@
   :pin melpa
   :custom
   (marginalia-max-relative-age 0)
-;    (marginalia-align 'right)
-;    (marginalia-align-offset -5)
   :init
   (marginalia-mode)
-;  (setq marginalia-annotators '(marginalia-annotators-heavy marginalia-annotators-light nil))
   )
 
 (use-package vertico
   :ensure t
   :config
-  ;; (defun ysb/vertico-insert-or-dired ()
-  ;; "If candidate is a directory, insert it; otherwise exit with it."
-  ;; (interactive)
-  ;; (let ((candidate (vertico--candidate)))
-  ;;   (if (and (file-directory-p candidate))
-  ;;       (vertico-insert)
-  ;;     (vertico-exit))))
-  ;; (advice-add 'citar--setup-multiple-keymap :override
-  ;;  (lambda ()
-  ;;   (let ((keymap (make-composed-keymap nil (current-local-map)))
-  ;;         (kbdselect (kbd (car citar--multiple-setup)))
-  ;;         (kbdexit   (kbd (cdr citar--multiple-setup))))
-  ;;     (define-key keymap kbdselect #'vertico-exit)
-  ;;     (define-key keymap kbdexit #'citar--multiple-exit)
-  ;;     (use-local-map keymap))))
-;;  
 ;; Dealing with a clash between RET in vertico and TAB+RET in citar multiple candidate selection
 (defvar ysb/citar-selecting-multiple nil
   "Non-nil when inside citar--select-multiple.")
@@ -75,8 +55,7 @@
     ("<next>"  . vertico-scroll-up))
   :init
   ;; Activate vertico
-  (vertico-mode)
-  (savehist-mode)
+  (vertico-mode) ;savehist-mode is enabled in generalT490.el
   )
 
 ;; Convenient path selection
@@ -132,7 +111,6 @@
   :config
   ;; Disable preview
   (setq consult-preview-key '("S-<down>" "S-<up>"))
-  ;(consult-preview-key nil)
   (consult-customize ;https://github.com/minad/consult#live-previews
    consult-line :preview-key 'any
    )
@@ -167,76 +145,56 @@
       (setq vertico--total (1- vertico--total))
       ;; Now force the redraw
       (vertico--exhibit))))
-)
-
-;; (use-package consult-imenu
-;;   :ensure nil
-;;   :after consult
-;;   :config
-;;   (add-to-list 'consult-imenu-config
-;;                '(emacs-lisp-mode :types
-;;                                  ((?u "use-package" font-lock-keyword-face)))))
-
+  )
+;; ---------------------- input completion for consult --------------------------------------------
+(defun ysb/latex-insert-input (&optional recursive)
+  "Insert \\input{FILE}, picking FILE with consult and live preview.
+With a prefix argument, search subdirectories too.
+Files the master already pulls in are marked."
+  (interactive "P")
+  (let* ((dir (ysb/latex-project-dir))
+         (cands (ysb/latex-input-candidates recursive))
+         (included (ignore-errors
+                     (mapcar #'file-truename
+                             (consult-latex-ref--collect-files
+                              (consult-latex-ref--master-file)))))
+         (preview (and (fboundp 'consult--file-preview)
+                       (consult--file-preview)))
+         (choice
+          (consult--read
+           cands
+           :prompt "\\input: "
+           :category 'file
+           :require-match t
+           :history 'file-name-history
+           :annotate
+           (lambda (cand)
+             (when (member (file-truename (expand-file-name cand dir)) included)
+               (propertize "  already in project"
+                           'face 'consult-latex-ref-toc-file-face)))
+           :state
+           (when preview
+             (lambda (action cand)
+               (funcall preview action
+                        (and cand (expand-file-name cand dir))))))))
+    (insert (format "\\input{%s}" (file-name-sans-extension choice)))))
+;;----------------------------------------------------------------------------------------
 (use-package embark
   :ensure t
   :bind
   (("M-o"   . embark-act)         ;; Begin the embark process
    ("C-;"   . embark-dwim)        ;; good alternative: M-.
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+  ;; :init
+  ;; (setq embark-auto-prefix-help-delay 1.5) ; default 2.0
+  ;; (embark-auto-prefix-help-mode)           ; pause after a prefix = vertico over its bindings
   :config
   (use-package embark-consult
       :ensure t
-))
+      ))
 
-(use-package cape
-  :disabled
-  :ensure t
-  :init
-  ;; 1. Tell Cape where your dictionary is
-  (setq cape-dict-file "/backup/Dropbox/zzz/emacs/hunspell/english-words.txt")
-
-  ;; 2. Add the dictionary and dabbrev (buffer words) to the completion list
-  (add-to-list 'completion-at-point-functions #'cape-dict)
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  
-  ;; Optional: If you want LaTeX-specific completions to always be available
-  (add-to-list 'completion-at-point-functions #'cape-tex))
-
-(use-package corfu
-  :disabled
-  :ensure t
-  :init
-  (global-corfu-mode)
-  :custom
-  (corfu-auto nil)              ;; Set to nil if you only want it when YOU trigger it
-  (corfu-quit-at-boundary nil)
-  ;; :bind 
-  ;; ;; 1. Use this to TRIGGER the menu
-  ;; ("C-x 0" . completion-at-point)
-  
-  ;; ;; 2. Use this to SELECT the word once the menu is open
-  ;; (:map corfu-map
-  ;;       ("C-x 0" . corfu-complete))
-  :config
-    ;; TAB cycle if there are only few candidates
-  ;; (completion-cycle-threshold 3)
-
-  ;; Enable indentation+completion using the TAB key.
-  ;; `completion-at-point' is often bound to M-TAB.
-  (tab-always-indent 'complete)
-
-  ;; Emacs 30 and newer: Disable Ispell completion function.
-  ;; Try `cape-dict' as an alternative.
-  (text-mode-ispell-word-completion nil) ;use this for cape
-  )
-;; A few more useful configurations...
-(use-package emacs
-  :custom
-  ;; Hide commands in M-x which do not apply to the current mode.  Corfu
-  ;; commands are hidden, since they are not used via M-x. This setting is
-  ;; useful beyond Corfu.
-  (read-extended-command-predicate #'command-completion-default-include-p)
-)
+;; cape and corfu (disabled) moved to atticT490.el
+;; (read-extended-command-predicate is already set in the use-package emacs block above)
 
 (use-package company
   :ensure t
@@ -244,19 +202,15 @@
   :demand t
   :hook
   (after-init . global-company-mode)
-  ;; :commands ; defers loading until after this command: https://www.gnu.org/software/emacs/manual/html_mono/use-package.html
-  ;; (company-complete-common)
+  :bind (:map company-mode-map ;moved here from generalT490.el
+              ("<tab>" . company-complete)
+              ("C-<tab>" . company-dabbrev)
+              :map company-active-map
+              ("<escape>" . company-abort)) ;https://github.com/company-mode/company-mode/discussions/1356#discussioncomment-4469605
   :config
-  ;; (add-hook 'prog-mode-hook 'company-mode)
-  ;; (add-hook 'text-mode-hook 'company-mode)
-  ;  (add-hook 'after-init-hook 'global-company-mode)
   (setq company-backends '((company-capf company-dabbrev-code) ; :with company-dabbrev-code
                            company-files
-;                           company-reftex-labels
                            company-dabbrev))
-  ;; (add-hook 'emacs-lisp-mode-hook ;'prog-mode-hook
-  ;;           (lambda ()
-  ;;             (setq-local company-idle-delay 0.2)))
   (defun ysb/toggle-company-auto ()
   "Switch between manual and automatic company completion."
   (interactive)
@@ -274,10 +228,6 @@
         company-require-match nil       
         company-minimum-prefix-length 2)
   ;; use numbers 0-9 to select company completion candidates :https://www.reddit.com/r/emacs/comments/5jvawj/select_the_company_completion_candidate_by/?rdt=48684
-  ;; (let ((map company-active-map))
-  ;; (mapc (lambda (x) (define-key map (format "%d" x)
-  ;;                `(lambda () (interactive) (company-complete-number ,x))))
-  ;;       (number-sequence 0 9)))
 (let ((map company-active-map))
   (mapc (lambda (x)
           (define-key map (format "%d" x)
@@ -286,8 +236,9 @@
                ;; If x is 0, complete the 10th candidate; otherwise complete x
                (company-complete-number ,(if (= x 0) 10 x)))))
         (number-sequence 0 9)))
-;; (define-key company-active-map [escape] 'company-abort) ;https://github.com/company-mode/company-mode/discussions/1356#discussioncomment-4469605
-  ;; (define-key company-mode-map (kbd "<tab>") 'company-complete)
   :custom
   (company-idle-delay nil) ;; turn off auto-completion by default
   )
+
+(provide 'completionT490)
+;;; completionT490.el ends here
