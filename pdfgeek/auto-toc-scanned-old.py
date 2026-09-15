@@ -3,10 +3,7 @@ Build a TOC for a scanned PDF from its printed Contents.
 
 By default the TOC is flat (one level). With --levels, ALL-CAPS title
 lines become level 1 and the rest become level 2, giving a two-level
-outline (chapters with nested subsections). With --dotted, the level
-comes instead from a leading section number: "1" is level 1, "1.1" is
-level 2, "6.2.1.1" is level 4, and numberless lines (Preface, Index)
-are level 1. Use --dotted for books whose TOC is numbered by section.
+outline (chapters with nested subsections).
 
 Two ways to supply the entries:
 
@@ -31,12 +28,6 @@ Usage:
     python contents_toc.py book.pdf --scan 5 8 --offset 12 --dry-run
     python contents_toc.py book.pdf --from-file toc.txt --offset 12
     python contents_toc.py book.pdf --from-file toc.txt --offset 12 --levels
-    python contents_toc.py book.pdf --from-file toc.txt --offset 18 --dotted
-
---dotted makes a multi-level TOC from leading section numbers (1, 1.1,
-1.1.1 ...). Levels can go deeper than two. Keep the number at the very
-start of each title line. Lines without a number sit at level 1. This
-switch overrides --levels if both are given.
 
 --dump (with --scan) writes the raw text of the Contents pages to
 <base>_toc_draft.txt, one line per non-empty source line, with junk
@@ -74,29 +65,12 @@ def is_all_caps(title):
     return bool(re.search(r"[A-Z]", title)) and not re.search(r"[a-z]", title)
 
 
-# A leading section number like "1", "2.2", or "6.2.1.1" at the start of a
-# title. The depth of the number (count of components) gives the TOC level.
-DOTTED_RE = re.compile(r"^(\d+(?:\.\d+)*)\.?\s")
-
-
-def dotted_level(title):
-    """Level from a leading dotted section number: 1 -> 1, 1.1 -> 2, etc.
-    Returns 1 for titles with no such number (Preface, Bibliography, ...)."""
-    m = DOTTED_RE.match(title)
-    if not m:
-        return 1
-    return m.group(1).count(".") + 1
-
-
-def parse_lines(text, two_levels=False, dotted=False):
+def parse_lines(text, two_levels=False):
     """Turn raw TOC text into [(level, title, printed_page), ...].
 
-    Level assignment:
-      - default: every entry is level 1.
-      - two_levels: ALL-CAPS title lines are level 1, everything else level 2.
-      - dotted: level comes from a leading section number's depth
-        (1 -> 1, 1.1 -> 2, 1.1.1 -> 3); numberless lines are level 1.
-    two_levels and dotted are mutually exclusive; dotted wins if both given."""
+    With two_levels=False every entry is level 1.
+    With two_levels=True, ALL-CAPS title lines are level 1 and everything
+    else is level 2."""
     entries = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -112,12 +86,7 @@ def parse_lines(text, two_levels=False, dotted=False):
         # keep the title readable. We leave the title mostly as-is on purpose.
         page = int(m.group(2))
         if title:
-            if dotted:
-                level = dotted_level(title)
-            elif two_levels:
-                level = 1 if is_all_caps(title) else 2
-            else:
-                level = 1
+            level = 1 if (not two_levels or is_all_caps(title)) else 2
             entries.append((level, title, page))
     return entries
 
@@ -187,7 +156,6 @@ def main():
 
     dry_run = "--dry-run" in argv
     two_levels = "--levels" in argv
-    dotted = "--dotted" in argv
 
     doc = pymupdf.open(pdf_path)
 
@@ -229,7 +197,7 @@ def main():
         doc.close()
         return
 
-    entries = parse_lines(raw, two_levels=two_levels, dotted=dotted)
+    entries = parse_lines(raw, two_levels=two_levels)
     if not entries:
         print("[!] Parsed 0 entries. Check the page range / file, or the "
               "TOC format may not match the expected 'Title .... page' shape.")
