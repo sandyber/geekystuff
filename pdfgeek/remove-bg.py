@@ -28,17 +28,26 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import numpy as np
-from PIL import Image
-
 IS_WINDOWS = platform.system() == "Windows"
 # Stops a console window flashing per subprocess when run from pythonw.
 CREATE_NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
-try:
-    NO_DITHER = Image.Dither.NONE          # Pillow >= 9.1
-except AttributeError:                      # pragma: no cover
-    NO_DITHER = Image.NONE
+# numpy and Pillow are bound by _load_image_libs(), not imported up here. A
+# module-level import would kill the script on a machine without them before
+# main() ever saw --install-deps, which is the one flag meant to fix that.
+np = Image = NO_DITHER = None
+
+
+def _load_image_libs():
+    """Bind numpy and Pillow into the module globals. Raises ImportError."""
+    global np, Image, NO_DITHER
+    import numpy
+    from PIL import Image as _Image
+    np, Image = numpy, _Image
+    try:
+        NO_DITHER = Image.Dither.NONE          # Pillow >= 9.1
+    except AttributeError:                      # pragma: no cover
+        NO_DITHER = Image.NONE
 
 
 # --------------------------------------------------------------------------
@@ -652,6 +661,13 @@ def main():
 
     if len(sys.argv) < 3 or "--help" in sys.argv or "-h" in sys.argv:
         print_help(script_name)
+        return
+
+    try:
+        _load_image_libs()
+    except ImportError as e:
+        print(f"[!] Missing Python package: {e.name or e}")
+        print(f"    Run: python {script_name} --install-deps")
         return
 
     input_path = sys.argv[1]

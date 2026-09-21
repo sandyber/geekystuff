@@ -3,19 +3,16 @@ Build a TOC for a scanned PDF from its printed Contents.
 
 Three ways to supply the entries. They can be combined.
 
-By default the TOC is flat (one level). With --levels, ALL-CAPS title
-lines become level 1 and the rest become level 2, giving a two-level
-outline (chapters with nested subsections). With --dotted, the level
-comes instead from a leading section number: "1" is level 1, "1.1" is
-level 2, "6.2.1.1" is level 4, and numberless lines (Preface, Index)
-are level 1. Use --dotted for books whose TOC is numbered by section.
-
-
+By default the TOC is flat (one level). See "Levels" below for the
+ways of nesting it.
 
 1. --scan FIRST LAST
    Pull text from the Contents pages themselves (works only if the PDF
    has a text layer, e.g. it went through ocrmypdf). The script parses
    lines like "Chapter 4   The Will ........ 87" into (title, page).
+   Add --layout when OCR has split the page numbers away from their
+   titles (the text dump shows all the titles, then all the numbers):
+   the entries are then rebuilt from word positions on the page.
 
 2. --from-file toc.txt
    You typed/pasted the entries by hand, one per line:
@@ -43,13 +40,7 @@ Usage:
     python auto-toc-scanned.py book.pdf --find-headings --levels numeric
     python auto-toc-scanned.py book.pdf --scan 4 5 --find-headings --auto-offset
     python auto-toc-scanned.py book.pdf --from-file toc.txt --offset 18 --dotted
-
---dotted makes a multi-level TOC from leading section numbers (1, 1.1,
-1.1.1 ...). Levels can go deeper than two. Keep the number at the very
-start of each title line. Lines without a number sit at level 1. This
-switch overrides --levels if both are given.
-
-
+    python auto-toc-scanned.py book.pdf --scan 9 10 --layout --levels chapter --auto-offset
 
 --dump (with --scan) writes the raw text of the Contents pages to
 <base>_toc_draft.txt, one line per non-empty source line, with junk
@@ -74,10 +65,17 @@ Levels
                   not just two levels.
 --levels numeric  level comes from the section number that starts the
                   title: "3 Ersatzism" is level 1, "3.2 Linguistic
-                  Ersatzism" level 2, "3.2.1 ..." level 3. This is the
+                  Ersatzism" level 2, "3.2.1 ..." level 3. A trailing
+                  dot ("3.2. Linguistic") is fine. Lines without a
+                  number (Preface, Index) sit at level 1. This is the
                   right mode for most academic books, whose chapter
                   titles are usually mixed case and so invisible to the
-                  ALL-CAPS heuristic.
+                  ALL-CAPS heuristic. --dotted is an alias for it.
+--levels chapter  lines that begin "Chapter N", "Part N" or the like,
+                  and lines with no section number at all, are level 1;
+                  everything else is level 2. Use this when sections are
+                  numbered 1, 2, 3 afresh inside each chapter, so the
+                  numbers alone cannot tell a chapter from a section.
 
 With --levels numeric, a section whose parent has no entry of its own
 (a 3.1 with no 3) gets one synthesised at the same page, so the outline
@@ -85,6 +83,17 @@ never dangles. Pass --no-synth-parents to switch that off.
 
 If a level-2 line appears before any level-1 line, it is promoted to
 keep the outline valid.
+
+--layout parses the --scan pages by geometry instead of by text line.
+Words are grouped into rows by their vertical position, the rightmost
+integer on a row is the page number, and a row without one is treated
+as the first line of a wrapped title and joined to the row below. The
+"Contents" heading, folios and roman-numeral front matter are dropped.
+With --levels indent, the level comes from where each entry starts
+horizontally on the page, which is more reliable than a text draft.
+--row-tol F sets how far apart (in points) two words may be vertically
+and still count as the same row; the default is half the typical word
+height, which copes with slight scan skew.
 
 Finding headings
 ----------------
@@ -140,8 +149,23 @@ LINE_RE = re.compile(r"^(.*?)[\s.]{2,}(\d+)\s*$")
 # keeps ordinary prose that happens to open with a number from matching.
 HEADING_RE = r"^[ \t]*(\d+(?:\.\d+)+)[ \t]+([A-Z][^\n]{0,60})$"
 
-# A section number at the start of a title, e.g. "3.2 Linguistic Ersatzism".
-NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)*)\s+(.*)$")
+# A section number at the start of a title, e.g. "3.2 Linguistic Ersatzism"
+# or "3.2. Linguistic Ersatzism" (trailing dot tolerated).
+NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)*)\.?\s+(.*)$")
+
+# A chapter-like heading for --levels chapter.
+CHAPTER_RE = re.compile(r"^(chapter|part|book|appendix|lecture|essay)\b", re.I)
+
+# OCR often puts a space before the dot in "1 . Title"; pull it back.
+SPLIT_DOT_RE = re.compile(r"^(\d+(?:\.\d+)*) \.")
+
+# Word tokens that are only leader dots or stray punctuation.
+LEADER_RE = re.compile(r"[.•·…:;,~\-_‘’°¤]+")
+
+# A roman numeral page number (front matter).
+ROMAN_RE = re.compile(r"^[ivxlcdm]+$", re.I)
+
+LEVEL_MODES = ("caps", "numeric", "indent", "chapter")
 
 
 def is_all_caps(title):
@@ -152,24 +176,10 @@ def is_all_caps(title):
     return bool(re.search(r"[A-Z]", title)) and not re.search(r"[a-z]", title)
 
 
-# A leading section number like "1", "2.2", or "6.2.1.1" at the start of a
-# title. The depth of the number (count of components) gives the TOC level.
-DOTTED_RE = re.compile(r"^(\d+(?:\.\d+)*)\.?\s")
-
-
 def section_number(title):
     """Return the dotted section number a title starts with, or None."""
     m = NUM_RE.match(title)
     return m.group(1) if m else None
-
-
-def dotted_level(title):
-    """Level from a leading dotted section number: 1 -> 1, 1.1 -> 2, etc.
-    Returns 1 for titles with no such number (Preface, Bibliography, ...)."""
-    m = DOTTED_RE.match(title)
-    if not m:
-        return 1
-    return m.group(1).count(".") + 1
 
 
 def numeric_level(title):
@@ -179,25 +189,37 @@ def numeric_level(title):
     return num.count(".") + 1 if num else 1
 
 
-def parse_lines(text, two_levels=False, dotted=False, level_mode=None):
+def clean_title(title):
+    """Collapse whitespace, drop leader dots at the ends, mend "1 ." garble."""
+    title = re.sub(r"\s+", " ", title).strip(" .")
+    return SPLIT_DOT_RE.sub(r"\1.", title)
+
+
+def entry_level(title, level_mode, indent=0):
+    """Outline level for a title under the given --levels mode.
+
+    indent is the entry's indentation in level units (already divided by
+    the indent step), used only by the 'indent' mode."""
+    if level_mode == "numeric":
+        return numeric_level(title)
+    if level_mode == "caps":
+        return 1 if is_all_caps(title) else 2
+    if level_mode == "chapter":
+        if CHAPTER_RE.match(title) or not section_number(title):
+            return 1
+        return 2
+    if level_mode == "indent":
+        return 1 + max(0, int(indent))
+    return 1
+
+
+def parse_lines(text, level_mode=None):
     """Turn raw TOC text into [(level, title, printed_page), ...].
 
-    Level assignment:
-      - default: every entry is level 1.
-      - two_levels: ALL-CAPS titles are level 1, the rest level 2.
-      - dotted: level comes from a leading section number's depth
-        (1 -> 1, 1.1 -> 2, 1.1.1 -> 3); numberless lines are level 1.
-      - level_mode 'numeric': same as dotted-style numbering, but accepts a
-        string mode from the CLI.
-      - level_mode 'caps': ALL-CAPS titles are level 1, others level 2.
-      - level_mode 'indent': leading indentation is used as the level.
-    two_levels and dotted are mutually exclusive; dotted wins if both given."""
-    if level_mode is None:
-        if dotted:
-            level_mode = "dotted"
-        elif two_levels:
-            level_mode = "caps"
-
+    Lines without a trailing page number are usually headers ("CONTENTS")
+    or wrapped titles; they are skipped quietly. level_mode is one of
+    LEVEL_MODES or None (flat). In 'indent' mode the level comes from the
+    line's leading whitespace: one tab or two spaces per level."""
     entries = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -206,53 +228,122 @@ def parse_lines(text, two_levels=False, dotted=False, level_mode=None):
         m = LINE_RE.match(line)
         if not m:
             continue
-        title, page = re.sub(r"\s+", " ", m.group(1)).strip(" ."), int(m.group(2))
+        title, page = clean_title(m.group(1)), int(m.group(2))
         if not title:
             continue
-        if level_mode == "dotted" or dotted:
-            level = dotted_level(title)
-        elif level_mode == "numeric":
-            level = numeric_level(title)
-        elif level_mode == "caps":
-            level = 1 if is_all_caps(title) else 2
-        elif level_mode == "indent":
-            lead = raw[:len(raw) - len(raw.lstrip())]
-            level = 1 + lead.count("\t") + lead.replace("\t", "").count(" ") // 2
-        else:
-            level = 1
-        entries.append((level, title, page))
+        lead = raw[:len(raw) - len(raw.lstrip())]
+        indent = lead.count("\t") + lead.replace("\t", "").count(" ") // 2
+        entries.append((entry_level(title, level_mode, indent), title, page))
     return entries
 
-    entries = []
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line:
-            continue
-        m = LINE_RE.match(line)
-        if not m:
-            # Lines without a trailing page number are usually headers
-            # ("CONTENTS") or wrapped titles; skip quietly.
-            continue
-        title = re.sub(r"\s+", " ", m.group(1)).strip(" .")
-        page = int(m.group(2))
-        if not title:
-            continue
-        if dotted:
-            level = dotted_level(title)
-        elif level_mode == "numeric":
-            level = numeric_level(title)
-        elif level_mode == "caps":
-            level = 1 if is_all_caps(title) else 2
-        else:
-            level = 1
-        entries.append((level, title, page))
-    return entries
 
-                level = 1 if is_all_caps(title) else 2
-            else:
-                level = 1
-            entries.append((level, title, page))
-    return entries
+def _page_rows(page, tol=None):
+    """Group a page's words into rows by vertical position.
+
+    Returns [(y_centre, [word, ...]), ...] top to bottom, each row's words
+    left to right. A word is (x0, y0, x1, y1, text, ...) as PyMuPDF gives
+    it. Block and line ids are ignored on purpose: that is the structure
+    OCR gets wrong when it splits a Contents page into columns."""
+    words = page.get_text("words")
+    if not words:
+        return []
+    if tol is None:
+        heights = sorted(w[3] - w[1] for w in words)
+        tol = heights[len(heights) // 2] * 0.5
+    words.sort(key=lambda w: ((w[1] + w[3]) / 2, w[0]))
+    rows = []
+    for w in words:
+        yc = (w[1] + w[3]) / 2
+        if rows and abs(yc - rows[-1][0]) <= tol:
+            rows[-1][1].append(w)
+        else:
+            rows.append([yc, [w]])
+    for row in rows:
+        row[1].sort(key=lambda w: w[0])
+    return [(yc, ws) for yc, ws in rows]
+
+
+def _row_tokens(words):
+    """Words of a row as text, with leader-only tokens removed. A lone "."
+    right after a leading section number ("1 . Title", an OCR habit) is
+    glued back onto the number rather than dropped."""
+    toks = []
+    for w in words:
+        t = w[4]
+        if t == "." and len(toks) == 1 and toks[0].isdigit():
+            toks[0] += "."
+        elif not LEADER_RE.fullmatch(t):
+            toks.append(t)
+    return toks
+
+
+def parse_contents_layout(doc, first, last, level_mode=None, row_tol=None):
+    """Parse Contents pages first..last (1-based, inclusive) by geometry.
+
+    Returns [(level, title, printed_page), ...] like parse_lines. Each row
+    of words becomes an entry if its rightmost token is an integer; a row
+    without one is buffered and prepended to the next entry as a wrapped
+    first line, unless a wide vertical gap follows it (which marks it as a
+    heading, a folio, or a roman-numeral front-matter entry instead).
+
+    In 'indent' mode the level is the rank of the entry's left edge among
+    the distinct left edges seen, so an outline the book indents by hand
+    comes out with the same shape."""
+    raw_entries = []  # (x0, title, page)
+    for pno in range(first - 1, last):
+        if not 0 <= pno < doc.page_count:
+            continue
+        rows = _page_rows(doc[pno], row_tol)
+        if not rows:
+            continue
+        pitches = sorted(b[0] - a[0] for a, b in zip(rows, rows[1:]))
+        pitch = pitches[len(pitches) // 2] if pitches else 12.0
+        wide_gap = pitch * 1.5
+        pending, pending_x0 = [], None
+        for i, (yc, words) in enumerate(rows):
+            toks = _row_tokens(words)
+            if not toks:
+                continue
+            gap_below = rows[i + 1][0] - yc if i + 1 < len(rows) else None
+            page = None
+            if toks[-1].isdigit():
+                page = int(toks.pop())
+            if page is None:
+                # Bare folio / roman numeral / leaders only: not a title.
+                if not any(re.search(r"[A-Za-z]", t) for t in toks) or \
+                        (len(toks) == 1 and ROMAN_RE.match(toks[0])):
+                    continue
+                if not pending:
+                    pending_x0 = words[0][0]
+                pending.extend(toks)
+                if gap_below is None or gap_below > wide_gap:
+                    pending, pending_x0 = [], None  # heading or front matter
+                continue
+            x0 = pending_x0 if pending else words[0][0]
+            title = clean_title(" ".join(pending + toks))
+            pending, pending_x0 = [], None
+            if title:
+                raw_entries.append((x0, title, page))
+
+    if not raw_entries:
+        return []
+
+    # Cluster the left edges so the same indentation gets the same rank.
+    xs = sorted({x for x, _, _ in raw_entries})
+    heights = [doc[p].get_text("words") for p in range(first - 1, last)
+               if 0 <= p < doc.page_count]
+    hs = sorted(w[3] - w[1] for ws in heights for w in ws)
+    x_tol = hs[len(hs) // 2] if hs else 6.0
+    clusters = []
+    for x in xs:
+        if clusters and x - clusters[-1][-1] <= x_tol:
+            clusters[-1].append(x)
+        else:
+            clusters.append([x])
+    rank = {x: k for k, c in enumerate(clusters) for x in c}
+
+    return [(entry_level(title, level_mode, rank[x0]), title, page)
+            for x0, title, page in raw_entries]
 
 
 def dump_draft(text):
@@ -344,6 +435,9 @@ def verify(doc, toc):
     bad = []
     for level, title, page in toc:
         body = _norm(title)
+        # Probe on the words of the title only: drop "chapter 3" or "3.2".
+        body = re.sub(r"^(chapter|part|book|appendix|lecture|essay)\s+\d+\s+",
+                      "", body)
         body = NUM_RE.sub(r"\2", body) if NUM_RE.match(body) else body
         words = body.split()
         if len(words) < 2:
@@ -420,6 +514,9 @@ def build_parser():
                     help="parse --scan pages by geometry, pairing each title "
                          "with the number to its right (for Contents pages "
                          "whose OCR splits titles and page numbers apart)")
+    ap.add_argument("--row-tol", type=float, default=None, metavar="F",
+                    help="--layout: vertical distance (points) within which "
+                         "words share a row (default: half the word height)")
     ap.add_argument("--find-headings", action="store_true",
                     help="take page numbers from headings in the body")
     ap.add_argument("--heading-re", default=HEADING_RE,
@@ -431,9 +528,11 @@ def build_parser():
     ap.add_argument("--auto-offset", action="store_true",
                     help="work out the offset from located headings")
     ap.add_argument("--levels", nargs="?", const="caps",
-                    choices=["caps", "numeric", "indent"], default=None,
+                    choices=list(LEVEL_MODES), default=None,
                     help="outline levels: 'caps' (default), 'numeric', "
-                         "or 'indent' (--from-file only)")
+                         "'chapter', or 'indent' (--from-file or --layout)")
+    ap.add_argument("--dotted", action="store_true",
+                    help="alias for --levels numeric (overrides --levels)")
     ap.add_argument("--no-synth-parents", action="store_true",
                     help="don't invent missing parent entries")
     ap.add_argument("--dump", action="store_true",
@@ -461,6 +560,12 @@ def main():
         sys.exit(1)
     if not (args.scan or args.from_file or args.find_headings):
         ap.error("give --scan FIRST LAST, --from-file PATH, or --find-headings")
+    if args.layout and not args.scan:
+        ap.error("--layout only applies to --scan pages")
+    if args.dotted:
+        args.levels = "numeric"
+    if args.body_from < 1:
+        ap.error("--body-from must be at least 1")
 
     doc = pymupdf.open(args.pdf)
     n = doc.page_count
@@ -469,11 +574,6 @@ def main():
     raw = None
     if args.scan:
         first, last = args.scan
-        raw = extract_from_pages(doc, first, last)
-        if not raw.strip():
-            print("[!] No text found on those pages. If this is a pure image "
-                  "PDF, run OCR first.")
-
         raw = extract_from_pages(doc, first, last)
         if not raw.strip():
             print("[!] No text found on those pages. If this is a pure image "
@@ -509,16 +609,14 @@ def main():
         return
 
     if args.layout:
-        if not args.scan:
-            ap.error("--layout only applies to --scan pages")
         entries = parse_contents_layout(doc, args.scan[0], args.scan[1],
                                         level_mode=args.levels,
-                                        two_levels=(args.levels in (True, "caps")),
-                                        dotted=args.dotted)
+                                        row_tol=args.row_tol)
+        if not entries:
+            print("  [?] --layout found no rows ending in a page number on "
+                  "those pages.")
     else:
-        entries = parse_lines(raw, two_levels=(args.levels in (True, "caps")),
-                              dotted=args.dotted,
-                              level_mode=args.levels if isinstance(args.levels, str) else None) if raw else []
+        entries = parse_lines(raw, level_mode=args.levels) if raw else []
         if args.scan and not entries:
             print("  [?] the line parser found nothing on those pages. If the "
                   "Contents has page numbers in a column of their own, OCR "
@@ -587,10 +685,6 @@ def main():
                for num in sorted(found, key=_num_key)]
 
     if not toc:
-        print("[!] Parsed 0 entries. Check the page range / file, or the "
-              "TOC format may not match the expected 'Title .... page' shape.")
-        doc.close()
-
         print("[!] Parsed 0 entries. Check the page range / file, or the "
               "TOC format may not match the expected 'Title .... page' shape.")
         doc.close()
