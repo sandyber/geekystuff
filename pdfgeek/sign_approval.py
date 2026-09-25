@@ -32,7 +32,7 @@ import io
 import sys
 from pathlib import Path
 
-import fitz                      # PyMuPDF
+import pymupdf
 from PIL import Image
 
 
@@ -101,7 +101,7 @@ def main(argv=None):
 
     sig_bytes, aspect = white_to_transparent(args.signature, args.threshold)
 
-    doc = fitz.open(args.input)
+    doc = pymupdf.open(args.input)
     placed = False
 
     for page in doc:
@@ -115,7 +115,7 @@ def main(argv=None):
         x0 = name_rect.x0 + args.x_offset
         y1 = name_rect.y0 - args.gap   # bottom of signature, just above name
         y0 = y1 - h
-        target = fitz.Rect(x0, y0, x0 + w, y1)
+        target = pymupdf.Rect(x0, y0, x0 + w, y1)
 
         page.insert_image(target, stream=sig_bytes, keep_proportion=True,
                           overlay=True)

@@ -69,7 +69,7 @@ import sys
 import unicodedata
 
 try:
-    import fitz  # PyMuPDF
+    import pymupdf
 except ImportError:
     sys.exit("PyMuPDF is missing.  Install it with:  pip install pymupdf")
 
@@ -885,7 +885,7 @@ def main():
 
     out_path = txt or re.sub(r"\.pdf$", "", pdf, flags=re.I) + ".txt"
 
-    doc = fitz.open(pdf)
+    doc = pymupdf.open(pdf)
 
     pages = None
     if pagespec is not None:
