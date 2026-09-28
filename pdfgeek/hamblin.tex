@@ -1,0 +1,149 @@
+% C. L. Hamblin, Imperatives (Blackwell, 1987) -- page-for-page resetting.
+% Generated body: hamblin-body.tex (build.py).  Compile with LuaLaTeX. Full file not included for copyright reasons...
+\providecommand\HScale{1.08}
+\documentclass[10pt,twoside]{book}
+\usepackage[paperwidth=156mm,paperheight=234mm,
+  textwidth=288pt,textheight=552pt,
+  inner=70pt,top=58pt,headheight=12pt,headsep=9pt,
+  footskip=24pt]{geometry}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmainfont{EB Garamond}[Numbers=Lining,Scale=\HScale,
+  SmallCapsFeatures={LetterSpace=2}]
+\setmathfont{Garamond-Math}[Scale=\HScale]
+\usepackage[british]{babel}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,decorations.pathreplacing}
+\usepackage{array}
+\usepackage[hidelinks,pdfpagelabels,bookmarks=true]{hyperref}
+\hypersetup{pdftitle={Imperatives},pdfauthor={C. L. Hamblin},
+  pdfsubject={Reset from the 1987 Basil Blackwell edition, page for page}}
+
+\setlength\parindent{1em}
+\setlength\parskip{0pt}
+\raggedbottom
+\frenchspacing
+\emergencystretch=1.5em
+\tolerance=1500
+\clubpenalty=0 \widowpenalty=0 \brokenpenalty=0
+\interlinepenalty=0
+\linespread{1}
+\renewcommand\normalsize{\fontsize{10}{12}\selectfont}
+% no italic correction before a hyphen (W-questions, if-clause)
+\renewcommand\nocorrlist{,.-}
+\normalsize
+
+% ---------------------------------------------------------------- page frame
+\newcommand\rh{}
+\fancypagestyle{body}{%
+  \fancyhf{}%
+  \fancyhead[LE]{\thepage}\fancyhead[RO]{\thepage}%
+  \fancyhead[CE,CO]{\itshape\rh}%
+  \renewcommand\headrulewidth{0pt}}
+\newcounter{hphys}
+\newcount\hpshipped
+\AddToHook{shipout/after}{\global\advance\hpshipped by 1 }
+% \hpage{physical}{printed number}{style}{running head}
+\newcommand\hpage[4]{%
+  \clearpage
+  \ifnum\hpshipped=\numexpr#1-1\relax\else
+    \typeout{HPAGE-OVERFLOW before physical #1: \the\hpshipped\space pages shipped}%
+    \global\hpshipped=\numexpr#1-1\relax
+  \fi
+  \setcounter{hphys}{#1}%
+  \setcounter{page}{#2}%
+  \renewcommand\rh{#4}%
+  \pagestyle{#3}\thispagestyle{#3}%
+  \typeout{HPAGE #1 #2}%
+}
+% the Foreword is set without word division
+\newcommand\nohyphens{\hyphenpenalty=10000 \exhyphenpenalty=10000 }
+\newcommand\withhyphens{\hyphenpenalty=50 \exhyphenpenalty=50 }
+\newcommand\finishpage{\par\typeout{HPAGE-END \the\value{hphys} \the\pagetotal}}
+
+% ---------------------------------------------------------------- inline
+\newcommand\elide{.\kern.18em.\kern.18em.}
+\makeatletter
+\newcommand\subsize{\fontsize{\fpeval{round(.72*\f@size,2)}}{0}\selectfont}
+\newcommand\sub[1]{\ifdim\lastskip=0pt \kern-.06em\fi\raisebox{-.26em}{\subsize #1}}
+\newcommand\sups[1]{\raisebox{.38em}{\subsize #1}}
+% superscript stacked over a subscript: q_t^1
+\newsavebox\hsubbox \newsavebox\hsupbox
+\newcommand\hsubsup[2]{\kern-.06em%
+  \sbox\hsubbox{\raisebox{-.26em}{\subsize #1}}%
+  \sbox\hsupbox{\raisebox{.38em}{\subsize #2}}%
+  \ifdim\wd\hsubbox>\wd\hsupbox
+    \rlap{\usebox\hsupbox}\usebox\hsubbox
+  \else
+    \rlap{\usebox\hsubbox}\usebox\hsupbox
+  \fi}
+% prime stacked over a subscript: E′₂
+\newcommand\primesub[2]{\rlap{#1}\raisebox{-.26em}{\subsize #2}}
+% the print's less-than in 'for all t′ < t' is small, at x-height
+\newcommand\smallless{\raisebox{.08ex}{\scalebox{.72}{<}}}
+\makeatother
+% the print's containment signs are the size of a capital letter
+\newcommand\Csub{\ensuremath{\mathrel{\raisebox{-.03em}{\scalebox{1.3}{$\subset$}}}}}
+\newcommand\Csubeq{\ensuremath{\mathrel{\raisebox{-.12em}{\scalebox{1.3}{$\subseteq$}}}}}
+\newcommand\prm{\ensuremath{{}^{\prime}}}
+\newcommand\dprm{\ensuremath{{}^{\prime\prime}}}
+\newcommand\ob[1]{\ensuremath{\overline{\mbox{#1}}}}
+\newcommand\fnmark[1]{\textsuperscript{#1}}
+
+% ---------------------------------------------------------------- blocks
+\newcommand\runon{{\parfillskip=0pt\par}}
+\newdimen\exindent \exindent=19pt
+\newdimen\exhang \exhang=10pt
+\newcommand\gskip{\par\vspace{6pt}}
+\newcommand\qskip{\par\vspace{10pt}}
+% \ex{level}{text}
+\newcommand\ex[2]{\par{\leftskip=#1\exindent \hangindent=\exhang \hangafter=1
+  \noindent #2\par}}
+% \exn{level}{label}{text}: label hangs
+\newcommand\exn[3]{\par{\leftskip=#1\exindent
+  \setbox0=\hbox{#2\ }\hangindent=\wd0 \hangafter=1
+  \noindent\box0 #3\par}}
+% \quo{indent?}{text}: block quotation, small type, full measure
+\newcommand\quo[2]{\par{\fontsize{8.7}{11}\selectfont
+  \ifnum#1=1 \indent\else\noindent\fi #2\par}}
+% \sechead{top?}{text}: centred small-caps heading
+\newcommand\sechead[2]{\par
+  \ifx&#1&\vspace{30pt}\else\vspace*{12pt}\fi
+  {\centering\normalsize #2\par}\vspace{12pt}}
+\newcommand\subhead[2]{\par
+  \ifx&#1&\vspace{14pt}\else\vspace*{6pt}\fi
+  {\centering\itshape #2\par}\vspace{7pt}}
+% chapter opening: number baseline 60pt, title 86pt, rule 99pt below the
+% top of the text area; the text's first baseline 150pt below it
+% \chapopen{number}{title}{second title line or empty}
+\newlength\chapextra
+\newcommand\chapopen[3]{%
+  \par\nointerlineskip
+  \ifx&#3&\chapextra=0pt \else\chapextra=26pt \fi
+  \vbox to \dimexpr138pt+\chapextra\relax{\offinterlineskip
+    \kern 60pt
+    \ifx&#1&\else
+      \hbox to\textwidth{\hss\smash{\fontsize{22}{24}\selectfont #1}\hss}\fi
+    \kern 26pt
+    \hbox to\textwidth{\hss\smash{\fontsize{19}{22}\selectfont #2}\hss}%
+    \ifx&#3&\else
+      \kern 26pt
+      \hbox to\textwidth{\hss\smash{\fontsize{19}{22}\selectfont #3}\hss}\fi
+    \kern 16pt
+    \hbox to\textwidth{\hss\vrule width 272pt height .45pt\hss}%
+    \vss}%
+  \prevdepth=0pt }
+\newcommand\bibsize{\fontsize{9}{10.1}\selectfont}
+\newcommand\bib[1]{\par{\bibsize\hangindent=1em \hangafter=1 \noindent #1\par}}
+\newcommand\bibcont[1]{\par{\bibsize\leftskip=1em \noindent #1\par}}
+\newcommand\bibb[1]{\par{\bibsize\leftskip=1em \noindent #1\par}}
+\newcommand\pagenote[2]{\par\vfill
+  {\fontsize{8}{10}\selectfont\noindent
+   \ifx*#1\textsuperscript{*}\else#1.\ \fi #2\par}}
+\newcommand\diagplaceholder[1]{\par{\fontsize{8}{10}\selectfont\noindent
+  \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule}{#1}}\par}}
+
+\begin{document}
+\input{hamblin-body}
+\end{document}
